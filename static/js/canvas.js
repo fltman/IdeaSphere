@@ -7,6 +7,7 @@ class CanvasManager {
         this.isDragging = false;
         this.connections = [];
         this.tooltip = this.createTooltip();
+        console.log('CanvasManager initialized');
         this.setupCanvas();
         this.setupEventListeners();
     }
@@ -25,17 +26,21 @@ class CanvasManager {
         const controlsHeight = document.querySelector('.controls').offsetHeight;
         const availableHeight = window.innerHeight - headerHeight - controlsHeight;
         
-        // Make the canvas large enough to accommodate ideas
         this.canvas.width = Math.max(window.innerWidth * 2, 3000);
         this.canvas.height = Math.max(availableHeight * 2, 3000);
         
-        // Center the viewport
         container.scrollLeft = (this.canvas.width - container.clientWidth) / 2;
         container.scrollTop = (this.canvas.height - container.clientHeight) / 2;
+        console.log('Canvas setup complete:', {
+            width: this.canvas.width,
+            height: this.canvas.height,
+            scroll: { x: container.scrollLeft, y: container.scrollTop }
+        });
     }
 
     setupEventListeners() {
         window.addEventListener('resize', () => {
+            console.log('Window resized');
             this.setupCanvas();
             this.render();
         });
@@ -47,6 +52,7 @@ class CanvasManager {
         
         this.canvas.addEventListener('mousemove', (e) => this.updateTooltip(e));
         this.canvas.addEventListener('mouseleave', () => this.hideTooltip());
+        console.log('Event listeners setup complete');
     }
 
     updateTooltip(e) {
@@ -70,6 +76,7 @@ class CanvasManager {
     }
 
     drawIdea(idea) {
+        console.log('Drawing idea:', idea);
         this.ctx.beginPath();
         this.ctx.arc(idea.x, idea.y, 40, 0, Math.PI * 2);
         this.ctx.fillStyle = idea.isAIGenerated ? '#4a5' : '#458';
@@ -95,6 +102,7 @@ class CanvasManager {
     }
 
     render() {
+        console.log('Rendering canvas with ideas:', this.ideas);
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.drawConnections();
         this.ideas.forEach(idea => this.drawIdea(idea));
@@ -103,11 +111,13 @@ class CanvasManager {
     addIdea(x, y, text, isAIGenerated = false) {
         const idea = { x, y, text, isAIGenerated };
         this.ideas.push(idea);
+        console.log('Added new idea:', idea);
         return idea;
     }
 
     connectIdeas(idea1, idea2) {
         this.connections.push({ from: idea1, to: idea2 });
+        console.log('Connected ideas:', { from: idea1, to: idea2 });
     }
 
     getIdeaAtPosition(x, y) {
@@ -125,6 +135,7 @@ class CanvasManager {
 
         const clickedIdea = this.getIdeaAtPosition(x, y);
         if (clickedIdea) {
+            console.log('Selected idea for dragging:', clickedIdea);
             this.selectedIdea = clickedIdea;
             this.isDragging = true;
         }
@@ -140,6 +151,9 @@ class CanvasManager {
     }
 
     handleMouseUp() {
+        if (this.isDragging) {
+            console.log('Finished dragging idea:', this.selectedIdea);
+        }
         this.isDragging = false;
         this.selectedIdea = null;
     }
@@ -150,10 +164,14 @@ class CanvasManager {
         const y = e.clientY - rect.top + this.canvas.parentElement.scrollTop;
         
         const clickedIdea = this.getIdeaAtPosition(x, y);
-        if (!clickedIdea) {
-            document.dispatchEvent(new CustomEvent('canvas-click', {
+        console.log('Canvas clicked:', { x, y, clickedIdea });
+        
+        if (!clickedIdea && !this.isDragging) {
+            console.log('Dispatching canvas-click event:', { x, y });
+            const event = new CustomEvent('canvas-click', {
                 detail: { x, y }
-            }));
+            });
+            document.dispatchEvent(event);
         }
     }
 }
