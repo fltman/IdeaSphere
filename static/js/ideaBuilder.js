@@ -47,6 +47,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const idea1 = ideaManager.selectedIdeas[0];
                 const idea2 = ideaManager.selectedIdeas[1];
                 
+                // Add generating class to both ideas
+                idea1.element.classList.add('generating');
+                idea2.element.classList.add('generating');
+                
                 fetch('/generate-ideas', {
                     method: 'POST',
                     headers: {
@@ -67,10 +71,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         const midX = (x1 + x2) / 2;
                         const midY = (y1 + y2) / 2;
                         
-                        const newIdea = ideaManager.addIdea(midX, midY, combinedIdeas[0].text);
+                        const newIdea = ideaManager.addIdea(midX, midY, combinedIdeas[0].text, false, true);
                         ideaManager.connectIdeas(idea1, newIdea);
                         ideaManager.connectIdeas(idea2, newIdea);
                     }
+                })
+                .finally(() => {
+                    // Remove generating class from both ideas
+                    idea1.element.classList.remove('generating');
+                    idea2.element.classList.remove('generating');
                 });
             }
             ideaManager.exitSelectMode();
