@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM Content Loaded');
     const ideaManager = new IdeaManager('idea-workspace');
     const ideaModal = new bootstrap.Modal(document.getElementById('ideaModal'));
-    const combineModal = new bootstrap.Modal(document.getElementById('combineModal'));
     const clearCanvasBtn = document.getElementById('clearCanvas');
     const combineIdeasBtn = document.getElementById('combineIdeasBtn');
     let pendingIdeaPosition = null;
@@ -42,12 +41,37 @@ document.addEventListener('DOMContentLoaded', function() {
     combineIdeasBtn.addEventListener('click', function() {
         if (ideaManager.isSelectMode) {
             if (ideaManager.selectedIdeas.length === 2) {
-                const selectedIdeasText = document.getElementById('selectedIdeasText');
-                selectedIdeasText.innerHTML = `
-                    <div class="mb-2"><strong>Idé 1:</strong> ${ideaManager.selectedIdeas[0].text}</div>
-                    <div class="mb-2"><strong>Idé 2:</strong> ${ideaManager.selectedIdeas[1].text}</div>
-                `;
-                combineModal.show();
+                const idea1 = ideaManager.selectedIdeas[0];
+                const idea2 = ideaManager.selectedIdeas[1];
+                
+                // Send both ideas to AI for combination
+                fetch('/generate-ideas', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        idea: `Combine these two ideas: 1. ${idea1.text} 2. ${idea2.text}`
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const combinedIdeas = JSON.parse(data.data).ideas;
+                        // Create new idea at midpoint
+                        const x1 = parseInt(idea1.element.style.left);
+                        const y1 = parseInt(idea1.element.style.top);
+                        const x2 = parseInt(idea2.element.style.left);
+                        const y2 = parseInt(idea2.element.style.top);
+                        const midX = (x1 + x2) / 2;
+                        const midY = (y1 + y2) / 2;
+                        
+                        // Create the combined idea
+                        const newIdea = ideaManager.addIdea(midX, midY, combinedIdeas[0].text);
+                        ideaManager.connectIdeas(idea1, newIdea);
+                        ideaManager.connectIdeas(idea2, newIdea);
+                    }
+                });
             }
             ideaManager.exitSelectMode();
             combineIdeasBtn.textContent = 'Kombinera idéer';
@@ -58,36 +82,6 @@ document.addEventListener('DOMContentLoaded', function() {
             combineIdeasBtn.textContent = 'Avsluta val';
             combineIdeasBtn.classList.remove('btn-outline-primary');
             combineIdeasBtn.classList.add('btn-secondary');
-        }
-    });
-
-    document.getElementById('saveCombinedIdea').addEventListener('click', function() {
-        const combinedIdeaInput = document.getElementById('combinedIdeaInput');
-        const combinedText = combinedIdeaInput.value.trim();
-        
-        if (combinedText && ideaManager.selectedIdeas.length === 2) {
-            const idea1 = ideaManager.selectedIdeas[0];
-            const idea2 = ideaManager.selectedIdeas[1];
-            
-            // Calculate the midpoint between the two selected ideas
-            const x1 = parseInt(idea1.element.style.left);
-            const y1 = parseInt(idea1.element.style.top);
-            const x2 = parseInt(idea2.element.style.left);
-            const y2 = parseInt(idea2.element.style.top);
-            
-            const midX = (x1 + x2) / 2;
-            const midY = (y1 + y2) / 2;
-            
-            // Create the new combined idea
-            const newIdea = ideaManager.addIdea(midX, midY, combinedText);
-            
-            // Connect the new idea to both parent ideas
-            ideaManager.connectIdeas(idea1, newIdea);
-            ideaManager.connectIdeas(idea2, newIdea);
-            
-            combinedIdeaInput.value = '';
-            combineModal.hide();
-            ideaManager.exitSelectMode();
         }
     });
 });

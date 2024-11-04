@@ -18,13 +18,11 @@ header {
 
 .idea-workspace {
     position: relative;
-    width: 100%;
+    width: 3000px;  /* Fixed width instead of min-width */
     height: calc(100vh - var(--header-height) - var(--controls-height));
     overflow: auto;
     background: var(--bs-body-bg);
-    min-width: 3000px;
     min-height: 3000px;
-    display: inline-block;  /* Add this to ensure proper horizontal scrolling */
 }
 
 .idea-ball {

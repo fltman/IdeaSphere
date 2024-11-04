@@ -12,13 +12,26 @@ def index():
 @app.route('/generate-ideas', methods=['POST'])
 def generate_ideas():
     main_idea = request.json.get('idea')
-    prompt = f"""Generate 3 related ideas for the concept: {main_idea}
-    Respond in JSON format with the following structure:
-    {{"ideas": [
-        {{"text": "first related idea"}},
-        {{"text": "second related idea"}},
-        {{"text": "third related idea"}}
-    ]}}"""
+    
+    # Check if this is a combination request
+    if main_idea.startswith('Combine these two ideas:'):
+        prompt = f"""Combine these two ideas into one innovative solution.
+        Generate 3 possible combinations, focusing on how these ideas could work together.
+        {main_idea}
+        Respond in JSON format with the following structure:
+        {{"ideas": [
+            {{"text": "first combined idea"}},
+            {{"text": "second combined idea"}},
+            {{"text": "third combined idea"}}
+        ]}}"""
+    else:
+        prompt = f"""Generate 3 related ideas for the concept: {main_idea}
+        Respond in JSON format with the following structure:
+        {{"ideas": [
+            {{"text": "first related idea"}},
+            {{"text": "second related idea"}},
+            {{"text": "third related idea"}}
+        ]}}"""
     
     try:
         response = send_openai_request(prompt)
