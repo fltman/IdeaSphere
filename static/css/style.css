@@ -167,6 +167,17 @@ body {
     color: #333;
 }
 
+/* Add styles for combined ideas */
+.idea-ball.combined .idea-ball-inner {
+    background: rgba(186, 85, 211, 0.85);  /* Medium orchid color with transparency */
+    color: white;
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.idea-ball.combined:hover .idea-ball-inner {
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
 .idea-ball-text {
     max-width: 100%;
     max-height: 100%;

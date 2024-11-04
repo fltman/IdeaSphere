@@ -111,7 +111,7 @@ class IdeaManager {
                     const midX = (x1 + x2) / 2;
                     const midY = (y1 + y2) / 2;
                     
-                    const newIdea = this.addIdea(midX, midY, combinedIdeas[0].text);
+                    const newIdea = this.addIdea(midX, midY, combinedIdeas[0].text, false, true);
                     this.connectIdeas(idea1, newIdea);
                     this.connectIdeas(idea2, newIdea);
                 }
@@ -166,9 +166,9 @@ class IdeaManager {
         });
     }
 
-    addIdea(x, y, text, isAIGenerated = false) {
+    addIdea(x, y, text, isAIGenerated = false, isCombined = false) {
         const ideaBall = document.createElement('div');
-        ideaBall.className = `idea-ball ${isAIGenerated ? 'ai' : 'main'}`;
+        ideaBall.className = `idea-ball ${isAIGenerated ? 'ai' : 'main'} ${isCombined ? 'combined' : ''}`;
         ideaBall.style.left = `${x}px`;
         ideaBall.style.top = `${y}px`;
         
@@ -405,7 +405,7 @@ class IdeaManager {
                             const midX = (x1 + x2) / 2;
                             const midY = (y1 + y2) / 2;
                             
-                            const newIdea = this.addIdea(midX, midY, combinedIdeas[0].text);
+                            const newIdea = this.addIdea(midX, midY, combinedIdeas[0].text, false, true);
                             this.connectIdeas(idea1, newIdea);
                             this.connectIdeas(idea2, newIdea);
                         }
