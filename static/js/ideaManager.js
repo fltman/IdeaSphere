@@ -230,8 +230,18 @@ class IdeaManager {
 
                 if (distance < minDistance) {
                     const angle = Math.atan2(dy, dx);
+                    
+                    // Get current velocities for both ideas
+                    const vel1 = this.velocities.get(idea1) || { x: 0, y: 0 };
+                    const vel2 = this.velocities.get(idea2) || { x: 0, y: 0 };
+                    
+                    // Calculate current speeds
+                    const speed1 = Math.sqrt(vel1.x * vel1.x + vel1.y * vel1.y);
+                    const speed2 = Math.sqrt(vel2.x * vel2.x + vel2.y * vel2.y);
+                    
+                    // Use maximum of current speeds or minimum repulsion speed
                     const speed = Math.max(speed1, speed2, 100);
-
+                    
                     const newVel1 = {
                         x: -speed * Math.cos(angle),
                         y: -speed * Math.sin(angle)
@@ -240,7 +250,7 @@ class IdeaManager {
                         x: speed * Math.cos(angle),
                         y: speed * Math.sin(angle)
                     };
-
+                    
                     this.velocities.set(idea1, newVel1);
                     this.velocities.set(idea2, newVel2);
 
@@ -437,105 +447,101 @@ class IdeaManager {
         
         if (ideaIndex === -1) {
             if (this.mergeIdeas.length < 2) {
-                ideaBall.classList.add('merge-mode');
                 this.mergeIdeas.push(idea);
-                
-                if (this.mergeIdeas.length === 2) {
-                    const idea1 = this.mergeIdeas[0];
-                    const idea2 = this.mergeIdeas[1];
-                    
-                    idea1.element.classList.add('generating');
-                    idea2.element.classList.add('generating');
-
-                    try {
-                        const response = await fetch('/generate-ideas', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ 
-                                idea: `Combine these two ideas: 1. ${idea1.text} 2. ${idea2.text}`
-                            })
-                        });
-
-                        const data = await response.json();
-                        if (data.success) {
-                            const combinedIdeas = JSON.parse(data.data).ideas;
-                            const x1 = parseInt(idea1.element.style.left);
-                            const y1 = parseInt(idea1.element.style.top);
-                            const x2 = parseInt(idea2.element.style.left);
-                            const y2 = parseInt(idea2.element.style.top);
-                            const midX = (x1 + x2) / 2;
-                            const midY = (y1 + y2) / 2;
-                            
-                            const newIdea = this.addIdea(midX, midY, combinedIdeas[0].text, false, true);
-                            this.connectIdeas(idea1, newIdea);
-                            this.connectIdeas(idea2, newIdea);
-                        }
-                    } catch (error) {
-                        console.error('Error merging ideas:', error);
-                    } finally {
-                        idea1.element.classList.remove('generating');
-                        idea2.element.classList.remove('generating');
-                        this.mergeIdeas.forEach(idea => idea.element.classList.remove('merge-mode'));
-                        this.mergeIdeas = [];
-                    }
-                }
+                ideaBall.classList.add('merge-mode');
             }
         } else {
-            ideaBall.classList.remove('merge-mode');
             this.mergeIdeas.splice(ideaIndex, 1);
+            ideaBall.classList.remove('merge-mode');
+        }
+        
+        if (this.mergeIdeas.length === 2) {
+            this.handleMerge();
+        }
+    }
+
+    async handleMerge() {
+        const idea1 = this.mergeIdeas[0];
+        const idea2 = this.mergeIdeas[1];
+        
+        try {
+            idea1.element.classList.add('generating');
+            idea2.element.classList.add('generating');
+            
+            const response = await fetch('/generate-ideas', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    idea: `Combine these two ideas: 1. ${idea1.text} 2. ${idea2.text}`
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                const combinedIdeas = JSON.parse(data.data).ideas;
+                const x1 = parseInt(idea1.element.style.left);
+                const y1 = parseInt(idea1.element.style.top);
+                const x2 = parseInt(idea2.element.style.left);
+                const y2 = parseInt(idea2.element.style.top);
+                
+                const midX = (x1 + x2) / 2;
+                const midY = (y1 + y2) / 2;
+                
+                const newIdea = this.addIdea(midX, midY, combinedIdeas[0].text, false, true);
+                
+                this.connectIdeas(idea1, newIdea);
+                this.connectIdeas(idea2, newIdea);
+                
+                this.mergeIdeas.forEach(idea => {
+                    idea.element.classList.remove('merge-mode');
+                });
+                this.mergeIdeas = [];
+            }
+        } catch (error) {
+            console.error('Error merging ideas:', error);
+        } finally {
+            idea1.element.classList.remove('generating');
+            idea2.element.classList.remove('generating');
         }
     }
 
     connectIdeas(idea1, idea2) {
-        const connection = { from: idea1, to: idea2 };
-        this.connections.push(connection);
+        this.connections.push({ from: idea1, to: idea2 });
         this.drawConnections();
     }
 
     clearWorkspace() {
-        while (this.workspace.firstChild) {
-            this.workspace.removeChild(this.workspace.firstChild);
-        }
+        this.ideas.forEach(idea => {
+            idea.element.remove();
+        });
         this.ideas = [];
         this.connections = [];
         this.drawConnections();
     }
 
-    addToHistory(text, isGenerated = true) {
-        if (isGenerated) {
-            this.generatedIdeas.unshift(text);
-            if (this.generatedIdeas.length > this.maxHistoryItems) {
-                this.generatedIdeas.pop();
-            }
-            this.updateHistoryList();
+    addToHistory(text) {
+        const historyList = document.getElementById('ideas-list');
+        if (!historyList) return;
+        
+        const listItem = document.createElement('li');
+        listItem.textContent = text;
+        
+        if (historyList.children.length >= this.maxHistoryItems) {
+            historyList.removeChild(historyList.lastChild);
         }
-    }
-
-    updateHistoryList() {
-        const list = document.getElementById('ideas-list');
-        list.innerHTML = '';
-        this.generatedIdeas.forEach(text => {
-            const li = document.createElement('li');
-            li.textContent = text;
-            list.appendChild(li);
-        });
+        
+        historyList.insertBefore(listItem, historyList.firstChild);
     }
 
     showTooltip(ideaBall, text) {
-        const existingTooltip = ideaBall.querySelector('.idea-tooltip');
-        if (existingTooltip) {
-            existingTooltip.remove();
-            return;
-        }
-        
-        document.querySelectorAll('.idea-tooltip').forEach(tooltip => tooltip.remove());
-        
         const tooltip = document.createElement('div');
         tooltip.className = 'idea-tooltip';
         tooltip.textContent = text;
-        tooltip.style.left = '130px';
+        tooltip.style.position = 'absolute';
+        tooltip.style.left = '120%';
         tooltip.style.top = '50%';
         tooltip.style.transform = 'translateY(-50%)';
         ideaBall.appendChild(tooltip);
