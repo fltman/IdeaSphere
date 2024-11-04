@@ -161,3 +161,45 @@ header {
     line-height: 1.4;
     word-wrap: break-word;
 }
+
+.info-btn,
+.generate-btn,
+.merge-btn {
+    z-index: 1;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.generate-btn {
+    background-color: var(--bs-success);
+    color: white;
+}
+
+.info-btn {
+    background-color: var(--bs-info);
+    color: white;
+}
+
+.merge-btn {
+    background-color: var(--bs-warning);
+    color: var(--bs-dark);
+}
+
+.generate-btn:hover {
+    background-color: var(--bs-success-hover);
+}
+
+.info-btn:hover {
+    background-color: var(--bs-info-hover);
+}
+
+.merge-btn:hover {
+    background-color: var(--bs-warning-hover);
+}
