@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 pendingIdeaPosition.y,
                 ideaText
             );
+            // Add manually created idea to history
+            ideaManager.addToHistory(ideaText, true);
             console.log('New idea created:', newIdea);
             
             ideaInput.value = '';
