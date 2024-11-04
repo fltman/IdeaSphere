@@ -66,19 +66,21 @@ class CanvasManager {
         });
         
         this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        this.canvas.addEventListener('mousemove', (e) => {
+            this.handleMouseMove(e);
+            this.updateTooltip(e);
+        });
         this.canvas.addEventListener('mouseup', () => this.handleMouseUp());
         this.canvas.addEventListener('click', (e) => this.handleClick(e));
-        
-        this.canvas.addEventListener('mousemove', (e) => this.updateTooltip(e));
         this.canvas.addEventListener('mouseleave', () => this.hideTooltip());
         console.log('Event listeners setup complete');
     }
 
     updateTooltip(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left + this.canvas.parentElement.scrollLeft;
-        const y = e.clientY - rect.top + this.canvas.parentElement.scrollTop;
+        const container = this.canvas.parentElement;
+        const x = e.clientX - rect.left + container.scrollLeft;
+        const y = e.clientY - rect.top + container.scrollTop;
         
         const idea = this.getIdeaAtPosition(x, y);
         if (idea) {
@@ -146,17 +148,20 @@ class CanvasManager {
     }
 
     getIdeaAtPosition(x, y) {
+        const clickRadius = 60; // Match the drawing radius
         return this.ideas.find(idea => {
             const dx = idea.x - x;
             const dy = idea.y - y;
-            return Math.sqrt(dx * dx + dy * dy) < 60;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance <= clickRadius;
         });
     }
 
     handleMouseDown(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left + this.canvas.parentElement.scrollLeft;
-        const y = e.clientY - rect.top + this.canvas.parentElement.scrollTop;
+        const container = this.canvas.parentElement;
+        const x = e.clientX - rect.left + container.scrollLeft;
+        const y = e.clientY - rect.top + container.scrollTop;
 
         const clickedIdea = this.getIdeaAtPosition(x, y);
         if (clickedIdea) {
@@ -170,13 +175,14 @@ class CanvasManager {
         if (!this.isDragging || !this.selectedIdea) return;
 
         const rect = this.canvas.getBoundingClientRect();
-        this.selectedIdea.x = e.clientX - rect.left + this.canvas.parentElement.scrollLeft;
-        this.selectedIdea.y = e.clientY - rect.top + this.canvas.parentElement.scrollTop;
+        const container = this.canvas.parentElement;
+        this.selectedIdea.x = e.clientX - rect.left + container.scrollLeft;
+        this.selectedIdea.y = e.clientY - rect.top + container.scrollTop;
         this.render();
     }
 
     handleMouseUp() {
-        if (this.isDragging) {
+        if (this.isDragging && this.selectedIdea) {
             console.log('Finished dragging idea:', this.selectedIdea);
             this.centerOnPoint(this.selectedIdea.x, this.selectedIdea.y);
         }
@@ -209,12 +215,19 @@ class CanvasManager {
         const clickedIdea = this.getIdeaAtPosition(x, y);
         console.log('Canvas clicked:', { x, y, clickedIdea });
         
+        // Only dispatch event for creating new idea if:
+        // 1. No idea was clicked
+        // 2. Not currently dragging
+        // 3. Click was on empty space
         if (!clickedIdea && !this.isDragging) {
-            console.log('Dispatching canvas-click event:', { x, y });
+            console.log('Dispatching canvas-click event for new idea:', { x, y });
             const event = new CustomEvent('canvas-click', {
                 detail: { x, y }
             });
             document.dispatchEvent(event);
+        } else if (clickedIdea) {
+            // Show tooltip for clicked idea
+            this.updateTooltip(e);
         }
     }
 }
