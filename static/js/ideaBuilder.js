@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const idea1 = ideaManager.selectedIdeas[0];
                 const idea2 = ideaManager.selectedIdeas[1];
                 
+                // Add generating class to both ideas
                 idea1.element.classList.add('generating');
                 idea2.element.classList.add('generating');
                 
@@ -76,6 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .finally(() => {
+                    // Remove generating class from both ideas
                     idea1.element.classList.remove('generating');
                     idea2.element.classList.remove('generating');
                 });
@@ -100,9 +102,9 @@ document.addEventListener('DOMContentLoaded', function() {
             startTimerBtn.classList.add('btn-outline-success');
             pauseTimerBtn.disabled = true;
         } else {
-            const seconds = parseInt(timerInput.value);
-            if (seconds > 0) {
-                ideaManager.setTimerDuration(seconds);
+            const minutes = parseInt(timerInput.value);
+            if (minutes > 0) {
+                ideaManager.setTimerDuration(minutes);
                 ideaManager.startTimer();
                 startTimerBtn.textContent = 'Stop Timer';
                 startTimerBtn.classList.remove('btn-outline-success');
@@ -129,6 +131,6 @@ document.addEventListener('DOMContentLoaded', function() {
     timerInput.addEventListener('change', function() {
         const value = parseInt(this.value);
         if (value < 1) this.value = 1;
-        if (value > 3600) this.value = 3600;
+        if (value > 60) this.value = 60;
     });
 });
