@@ -11,6 +11,47 @@ class IdeaManager {
         this.setupEventListeners();
     }
 
+    checkCollision(x, y, existingIdeas) {
+        const radius = 70; // Ball radius + padding
+        for (const idea of existingIdeas) {
+            const ideaX = parseInt(idea.element.style.left);
+            const ideaY = parseInt(idea.element.style.top);
+            const distance = Math.sqrt(Math.pow(x - ideaX, 2) + Math.pow(y - ideaY, 2));
+            if (distance < radius * 2) return true;
+        }
+        return false;
+    }
+
+    findValidPosition(x, y) {
+        const minPadding = 120;
+        const maxAttempts = 10;
+        const spiralStep = 100;
+        
+        // First ensure coordinates are within bounds
+        x = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
+        y = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
+        
+        if (!this.checkCollision(x, y, this.ideas)) return { x, y };
+        
+        // Try positions in a spiral pattern
+        for (let i = 1; i <= maxAttempts; i++) {
+            const angle = i * (Math.PI / 4);
+            const newX = x + Math.cos(angle) * (spiralStep * i);
+            const newY = y + Math.sin(angle) * (spiralStep * i);
+            
+            // Ensure new position is within bounds
+            const boundedX = Math.max(minPadding, Math.min(newX, this.workspace.clientWidth - minPadding));
+            const boundedY = Math.max(minPadding, Math.min(newY, this.workspace.clientHeight - minPadding));
+            
+            if (!this.checkCollision(boundedX, boundedY, this.ideas)) {
+                return { x: boundedX, y: boundedY };
+            }
+        }
+        
+        // If no position found, return the last valid bounded position
+        return { x, y };
+    }
+
     setupEventListeners() {
         this.workspace.addEventListener('click', (e) => {
             if (e.target === this.workspace) {
@@ -68,13 +109,9 @@ class IdeaManager {
             const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
             const y = e.clientY - rect.top + this.workspace.scrollTop - this.dragStartPos.y;
             
-            // Ensure the dragged idea stays within bounds
-            const minPadding = 120;
-            const boundedX = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
-            const boundedY = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
-            
-            ideaBall.style.left = `${boundedX}px`;
-            ideaBall.style.top = `${boundedY}px`;
+            const position = this.findValidPosition(x, y);
+            ideaBall.style.left = `${position.x}px`;
+            ideaBall.style.top = `${position.y}px`;
             
             this.updateConnections();
         });
@@ -135,18 +172,11 @@ class IdeaManager {
                 const angleStep = (2 * Math.PI) / relatedIdeas.length;
 
                 relatedIdeas.forEach((newIdea, index) => {
-                    const angle = index * angleStep;
-                    const newX = Math.max(120, Math.min(
-                        parseInt(ideaBall.style.left) + radius * Math.cos(angle),
-                        this.workspace.clientWidth - 120
-                    ));
-                    const newY = Math.max(120, Math.min(
-                        parseInt(ideaBall.style.top) + radius * Math.sin(angle),
-                        this.workspace.clientHeight - 120
-                    ));
-                    
-                    console.log('Creating related idea:', { text: newIdea.text, x: newX, y: newY });
-                    const subIdea = this.addIdea(newX, newY, newIdea.text, true);
+                    const baseAngle = index * angleStep;
+                    const baseX = parseInt(ideaBall.style.left) + radius * Math.cos(baseAngle);
+                    const baseY = parseInt(ideaBall.style.top) + radius * Math.sin(baseAngle);
+                    const position = this.findValidPosition(baseX, baseY);
+                    const subIdea = this.addIdea(position.x, position.y, newIdea.text, true);
                     this.connectIdeas(this.ideas.find(i => i.element === ideaBall), subIdea);
                 });
 
@@ -158,16 +188,12 @@ class IdeaManager {
     }
 
     addIdea(x, y, text, isAIGenerated = false) {
-        // Ensure minimum padding from edges
-        const minPadding = 120;
-        x = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
-        y = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
-        
-        const ideaBall = this.createIdeaBall(x, y, text, isAIGenerated);
+        const position = this.findValidPosition(x, y);
+        const ideaBall = this.createIdeaBall(position.x, position.y, text, isAIGenerated);
         this.workspace.appendChild(ideaBall);
         const idea = { element: ideaBall, text, isAIGenerated };
         this.ideas.push(idea);
-        this.centerOnPoint(x, y);
+        this.centerOnPoint(position.x, position.y);
         return idea;
     }
 
