@@ -68,8 +68,13 @@ class IdeaManager {
             const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
             const y = e.clientY - rect.top + this.workspace.scrollTop - this.dragStartPos.y;
             
-            ideaBall.style.left = `${x}px`;
-            ideaBall.style.top = `${y}px`;
+            // Ensure the dragged idea stays within bounds
+            const minPadding = 120;
+            const boundedX = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
+            const boundedY = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
+            
+            ideaBall.style.left = `${boundedX}px`;
+            ideaBall.style.top = `${boundedY}px`;
             
             this.updateConnections();
         });
@@ -80,7 +85,6 @@ class IdeaManager {
             this.updateConnections();
         });
 
-        // Show full text on click
         ideaBall.addEventListener('click', (e) => {
             if (e.target === generateBtn) {
                 e.stopPropagation();
@@ -127,13 +131,19 @@ class IdeaManager {
             
             if (data.success) {
                 const relatedIdeas = JSON.parse(data.data).ideas;
-                const radius = 200;
+                const radius = Math.min(200, (this.workspace.clientWidth - parseInt(ideaBall.style.left) - 240) / 2);
                 const angleStep = (2 * Math.PI) / relatedIdeas.length;
 
                 relatedIdeas.forEach((newIdea, index) => {
                     const angle = index * angleStep;
-                    const newX = parseInt(ideaBall.style.left) + radius * Math.cos(angle);
-                    const newY = parseInt(ideaBall.style.top) + radius * Math.sin(angle);
+                    const newX = Math.max(120, Math.min(
+                        parseInt(ideaBall.style.left) + radius * Math.cos(angle),
+                        this.workspace.clientWidth - 120
+                    ));
+                    const newY = Math.max(120, Math.min(
+                        parseInt(ideaBall.style.top) + radius * Math.sin(angle),
+                        this.workspace.clientHeight - 120
+                    ));
                     
                     console.log('Creating related idea:', { text: newIdea.text, x: newX, y: newY });
                     const subIdea = this.addIdea(newX, newY, newIdea.text, true);
@@ -145,6 +155,20 @@ class IdeaManager {
         } catch (error) {
             console.error('Error generating ideas:', error);
         }
+    }
+
+    addIdea(x, y, text, isAIGenerated = false) {
+        // Ensure minimum padding from edges
+        const minPadding = 120;
+        x = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
+        y = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
+        
+        const ideaBall = this.createIdeaBall(x, y, text, isAIGenerated);
+        this.workspace.appendChild(ideaBall);
+        const idea = { element: ideaBall, text, isAIGenerated };
+        this.ideas.push(idea);
+        this.centerOnPoint(x, y);
+        return idea;
     }
 
     enterSelectMode() {
@@ -190,15 +214,6 @@ class IdeaManager {
         this.connections.forEach(conn => {
             this.updateConnectionPosition(conn.line, conn.from, conn.to);
         });
-    }
-
-    addIdea(x, y, text, isAIGenerated = false) {
-        const ideaBall = this.createIdeaBall(x, y, text, isAIGenerated);
-        this.workspace.appendChild(ideaBall);
-        const idea = { element: ideaBall, text, isAIGenerated };
-        this.ideas.push(idea);
-        this.centerOnPoint(x, y);
-        return idea;
     }
 
     connectIdeas(idea1, idea2) {

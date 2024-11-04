@@ -18,11 +18,14 @@ header {
 
 .idea-workspace {
     position: relative;
-    width: 3000px;  /* Fixed width instead of min-width */
+    width: 3000px;
     height: calc(100vh - var(--header-height) - var(--controls-height));
     overflow: auto;
     background: var(--bs-body-bg);
     min-height: 3000px;
+    padding: 100px;  /* Add padding to prevent elements at edges */
+    transform: translateX(-50%);  /* Center the workspace */
+    margin-left: 50%;
 }
 
 .idea-ball {
