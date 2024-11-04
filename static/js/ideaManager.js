@@ -4,7 +4,7 @@ class IdeaManager {
         this.ideas = [];
         this.connections = [];
         this.isDragging = false;
-        this.dragStartPos = { x: 0, y: 0 };
+        this.dragStartPos = null;
         this.selectedIdea = null;
         this.isSelectMode = false;
         this.selectedIdeas = [];
@@ -99,30 +99,34 @@ class IdeaManager {
                 this.isDragging = true;
                 this.selectedIdea = ideaBall;
                 const rect = ideaBall.getBoundingClientRect();
+                const workspaceRect = this.workspace.getBoundingClientRect();
+                
+                // Store the initial position and offset
                 this.dragStartPos = {
                     x: e.clientX - rect.left,
-                    y: e.clientY - rect.top
+                    y: e.clientY - rect.top,
+                    initialLeft: parseInt(ideaBall.style.left),
+                    initialTop: parseInt(ideaBall.style.top)
                 };
+                
+                // Set drag image to maintain visual during drag
                 e.dataTransfer.setDragImage(ideaBall, this.dragStartPos.x, this.dragStartPos.y);
             }
         });
 
         ideaBall.addEventListener('dragover', (e) => {
-            e.preventDefault(); // Allow drop
+            e.preventDefault();
             if (this.isSelectMode) return;
             
-            const rect = this.workspace.getBoundingClientRect();
-            const scrollLeft = this.workspace.scrollLeft;
-            const scrollTop = this.workspace.scrollTop;
+            const workspaceRect = this.workspace.getBoundingClientRect();
             
-            // Calculate new position ensuring it's positive
-            const x = Math.max(0, e.clientX - rect.left + scrollLeft);
-            const y = Math.max(0, e.clientY - rect.top + scrollTop);
+            // Calculate new position using the initial offset
+            const newX = this.dragStartPos.initialLeft + (e.clientX - workspaceRect.left + this.workspace.scrollLeft) - (this.dragStartPos.initialLeft + this.dragStartPos.x);
+            const newY = this.dragStartPos.initialTop + (e.clientY - workspaceRect.top + this.workspace.scrollTop) - (this.dragStartPos.initialTop + this.dragStartPos.y);
             
-            // Find valid position within bounds
-            const position = this.findValidPosition(x, y);
+            // Apply bounds checking
+            const position = this.findValidPosition(newX, newY);
             
-            // Update position with animation frame for smoother movement
             requestAnimationFrame(() => {
                 ideaBall.style.left = `${position.x}px`;
                 ideaBall.style.top = `${position.y}px`;
@@ -134,11 +138,14 @@ class IdeaManager {
             if (this.isDragging && this.selectedIdea) {
                 const currentX = parseInt(ideaBall.style.left);
                 const currentY = parseInt(ideaBall.style.top);
-                const position = this.findValidPosition(currentX, currentY);
                 
-                ideaBall.style.left = `${position.x}px`;
-                ideaBall.style.top = `${position.y}px`;
-                this.updateConnections();
+                // Only adjust position if outside bounds
+                const position = this.findValidPosition(currentX, currentY);
+                if (position.x !== currentX || position.y !== currentY) {
+                    ideaBall.style.left = `${position.x}px`;
+                    ideaBall.style.top = `${position.y}px`;
+                    this.updateConnections();
+                }
             }
             this.isDragging = false;
             this.selectedIdea = null;
