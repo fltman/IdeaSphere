@@ -1,19 +1,60 @@
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    padding: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    padding: 1rem 0;
+}
+
 .canvas-container {
     width: 100%;
-    height: 70vh;
+    flex: 1;
     border: 2px solid var(--bs-secondary);
     border-radius: 8px;
-    overflow: hidden;
+    overflow: auto;
+    position: relative;
 }
 
 #ideaCanvas {
-    width: 100%;
-    height: 100%;
     cursor: pointer;
+    position: absolute;
+    min-width: 100%;
+    min-height: 100%;
 }
 
 .controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     display: flex;
     gap: 1rem;
     justify-content: center;
+    padding: 1rem;
+    background: var(--bs-body-bg);
+    border-top: 1px solid var(--bs-secondary);
+}
+
+.idea-tooltip {
+    position: absolute;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-secondary);
+    padding: 0.5rem;
+    border-radius: 4px;
+    z-index: 1000;
+    pointer-events: none;
+    max-width: 200px;
+    word-wrap: break-word;
 }

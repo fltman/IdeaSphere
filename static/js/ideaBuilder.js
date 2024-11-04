@@ -5,10 +5,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearCanvasBtn = document.getElementById('clearCanvas');
     let pendingIdeaPosition = null;
 
-    document.getElementById('ideaCanvas').addEventListener('click', function(e) {
-        if (canvasManager.getIdeaAtPosition(e.offsetX, e.offsetY)) return;
-
-        pendingIdeaPosition = { x: e.offsetX, y: e.offsetY };
+    document.addEventListener('canvas-click', function(e) {
+        pendingIdeaPosition = { x: e.detail.x, y: e.detail.y };
         ideaModal.show();
     });
 
