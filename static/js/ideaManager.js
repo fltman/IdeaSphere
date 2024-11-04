@@ -19,7 +19,6 @@ class IdeaManager {
             }
         });
 
-        // Handle clicks outside workspace to close tooltips
         document.addEventListener('click', (e) => {
             if (!this.workspace.contains(e.target)) {
                 this.hideAllTooltips();
@@ -33,6 +32,15 @@ class IdeaManager {
         ideaBall.textContent = text;
         ideaBall.style.left = `${x}px`;
         ideaBall.style.top = `${y}px`;
+        
+        // Add generate button
+        const generateBtn = document.createElement('button');
+        generateBtn.className = 'btn btn-sm btn-secondary generate-btn';
+        generateBtn.textContent = '+';
+        generateBtn.style.position = 'absolute';
+        generateBtn.style.right = '-10px';
+        generateBtn.style.top = '-10px';
+        ideaBall.appendChild(generateBtn);
         
         // Setup dragging
         ideaBall.setAttribute('draggable', 'true');
@@ -49,7 +57,7 @@ class IdeaManager {
         });
 
         ideaBall.addEventListener('drag', (e) => {
-            if (e.clientX === 0 && e.clientY === 0) return; // Ignore invalid positions
+            if (e.clientX === 0 && e.clientY === 0) return;
             
             const rect = this.workspace.getBoundingClientRect();
             const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
@@ -69,8 +77,10 @@ class IdeaManager {
 
         // Show full text on click
         ideaBall.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.showTooltip(ideaBall, text);
+            if (e.target !== generateBtn) {
+                e.stopPropagation();
+                this.showTooltip(ideaBall, text);
+            }
         });
 
         return ideaBall;
@@ -111,7 +121,7 @@ class IdeaManager {
     addIdea(x, y, text, isAIGenerated = false) {
         const ideaBall = this.createIdeaBall(x, y, text, isAIGenerated);
         this.workspace.appendChild(ideaBall);
-        const idea = { element: ideaBall, text, isAIGenerated, x, y };
+        const idea = { element: ideaBall, text, isAIGenerated };
         this.ideas.push(idea);
         this.centerOnPoint(x, y);
         return idea;
