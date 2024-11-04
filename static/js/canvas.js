@@ -8,123 +8,92 @@ class CanvasManager {
         this.connections = [];
         this.tooltip = this.createTooltip();
         this.isPermanentTooltip = false;
-        console.log('CanvasManager initialized');
         this.setupCanvas();
         this.setupEventListeners();
+        
+        // Debounce the resize handler
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => this.handleResize(), 250);
+        });
     }
 
     createTooltip() {
         const tooltip = document.createElement('div');
         tooltip.className = 'idea-tooltip';
         tooltip.style.display = 'none';
-        this.canvas.parentElement.appendChild(tooltip);
+        document.body.appendChild(tooltip);
         return tooltip;
     }
 
-    getViewportCenter() {
-        const container = this.canvas.parentElement;
-        return {
-            x: container.scrollLeft + container.clientWidth / 2,
-            y: container.scrollTop + container.clientHeight / 2
-        };
-    }
-
-    centerOnPoint(x, y) {
-        const container = this.canvas.parentElement;
-        container.scrollTo({
-            left: x - container.clientWidth / 2,
-            top: y - container.clientHeight / 2,
-            behavior: 'smooth'
-        });
-    }
-
     setupCanvas() {
-        const container = this.canvas.parentElement;
-        const headerHeight = document.querySelector('header').offsetHeight;
-        const controlsHeight = document.querySelector('.controls').offsetHeight;
-        const availableHeight = window.innerHeight - headerHeight - controlsHeight;
+        const workspace = this.canvas.parentElement;
+        const availableWidth = workspace.clientWidth;
+        const availableHeight = workspace.clientHeight;
         
-        this.canvas.width = Math.max(window.innerWidth * 2, 3000);
+        // Make canvas at least 2x the viewport size or 3000px, whichever is larger
+        this.canvas.width = Math.max(availableWidth * 2, 3000);
         this.canvas.height = Math.max(availableHeight * 2, 3000);
         
-        const center = this.getViewportCenter();
-        container.scrollLeft = (this.canvas.width - container.clientWidth) / 2;
-        container.scrollTop = (this.canvas.height - container.clientHeight) / 2;
-        
-        console.log('Canvas setup complete:', {
-            width: this.canvas.width,
-            height: this.canvas.height,
-            scroll: { x: container.scrollLeft, y: container.scrollTop }
-        });
+        // Center the viewport
+        workspace.scrollLeft = (this.canvas.width - availableWidth) / 2;
+        workspace.scrollTop = (this.canvas.height - availableHeight) / 2;
     }
 
-    setupEventListeners() {
-        window.addEventListener('resize', () => {
-            console.log('Window resized');
-            this.setupCanvas();
-            this.render();
-        });
+    handleResize() {
+        const workspace = this.canvas.parentElement;
+        const oldWidth = this.canvas.width;
+        const oldHeight = this.canvas.height;
         
-        this.canvas.addEventListener('mousedown', (e) => {
-            this.handleMouseDown(e);
-        });
+        // Store scroll positions as percentages
+        const scrollXPercent = workspace.scrollLeft / oldWidth;
+        const scrollYPercent = workspace.scrollTop / oldHeight;
         
-        this.canvas.addEventListener('mousemove', (e) => {
-            if (this.isDragging) {
-                this.handleMouseMove(e);
-            } else if (!this.isPermanentTooltip) {
-                this.updateTooltip(e);
-            }
-        });
+        this.setupCanvas();
         
-        this.canvas.addEventListener('mouseup', (e) => {
-            this.handleMouseUp(e);
-        });
+        // Restore scroll positions
+        workspace.scrollLeft = this.canvas.width * scrollXPercent;
+        workspace.scrollTop = this.canvas.height * scrollYPercent;
         
-        this.canvas.addEventListener('click', (e) => {
-            this.handleClick(e);
-        });
-        
-        this.canvas.addEventListener('mouseleave', () => {
-            if (!this.isPermanentTooltip) {
-                this.hideTooltip();
-            }
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!this.canvas.contains(e.target) && this.isPermanentTooltip) {
-                this.isPermanentTooltip = false;
-                this.hideTooltip();
-            }
-        });
+        this.render();
     }
 
     updateTooltip(e, forceShow = false) {
-        const rect = this.canvas.getBoundingClientRect();
-        const container = this.canvas.parentElement;
-        const x = e.clientX - rect.left + container.scrollLeft;
-        const y = e.clientY - rect.top + container.scrollTop;
-        
-        const idea = this.getIdeaAtPosition(x, y);
+        const idea = this.getIdeaAtPosition(
+            e.clientX + this.canvas.parentElement.scrollLeft - this.canvas.parentElement.offsetLeft,
+            e.clientY + this.canvas.parentElement.scrollTop - this.canvas.parentElement.offsetTop
+        );
+
         if (idea) {
             this.tooltip.textContent = idea.text;
             this.tooltip.style.display = 'block';
-            
-            const tooltipX = e.clientX + 10;
-            const tooltipY = e.clientY + 10;
-            
+
+            // Calculate available space
             const tooltipRect = this.tooltip.getBoundingClientRect();
-            if (tooltipX + tooltipRect.width > window.innerWidth) {
-                this.tooltip.style.left = (e.clientX - tooltipRect.width - 10) + 'px';
-            } else {
-                this.tooltip.style.left = tooltipX + 'px';
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+
+            // Default position is to the right and below the cursor
+            let left = e.clientX + 10;
+            let top = e.clientY + 10;
+
+            // Adjust horizontal position if tooltip would overflow right edge
+            if (left + tooltipRect.width > viewportWidth) {
+                left = e.clientX - tooltipRect.width - 10;
             }
-            
-            if (tooltipY + tooltipRect.height > window.innerHeight) {
-                this.tooltip.style.top = (e.clientY - tooltipRect.height - 10) + 'px';
-            } else {
-                this.tooltip.style.top = tooltipY + 'px';
+
+            // Adjust vertical position if tooltip would overflow bottom edge
+            if (top + tooltipRect.height > viewportHeight) {
+                top = e.clientY - tooltipRect.height - 10;
             }
+
+            // Ensure tooltip doesn't go off-screen to the left or top
+            left = Math.max(10, left);
+            top = Math.max(10, top);
+
+            this.tooltip.style.left = `${left}px`;
+            this.tooltip.style.top = `${top}px`;
 
             if (forceShow) {
                 this.isPermanentTooltip = true;
@@ -140,24 +109,66 @@ class CanvasManager {
     }
 
     drawIdea(idea) {
+        const radius = 60;
         this.ctx.beginPath();
-        this.ctx.arc(idea.x, idea.y, 60, 0, Math.PI * 2);
-        this.ctx.fillStyle = idea.isAIGenerated ? '#98FB98' : '#6495ED';
+        this.ctx.arc(idea.x, idea.y, radius, 0, Math.PI * 2);
+        
+        // Fill with appropriate color
+        if (idea.isCombined) {
+            this.ctx.fillStyle = 'rgba(186, 85, 211, 0.85)';
+        } else if (idea.isAIGenerated) {
+            this.ctx.fillStyle = 'rgba(152, 251, 152, 0.85)';
+        } else {
+            this.ctx.fillStyle = 'rgba(100, 149, 237, 0.85)';
+        }
+        
         this.ctx.fill();
-        this.ctx.strokeStyle = '#fff';
+        
+        // Add white border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
         
-        this.ctx.fillStyle = '#fff';
-        this.ctx.font = '18px Arial';
+        // Draw text
+        this.ctx.fillStyle = idea.isAIGenerated ? '#333' : '#fff';
+        this.ctx.font = '16px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        const shortText = idea.text.length > 20 ? idea.text.substring(0, 17) + '...' : idea.text;
-        this.ctx.fillText(shortText, idea.x, idea.y);
+        
+        // Text wrapping
+        const words = idea.text.split(' ');
+        let line = '';
+        let lines = [];
+        const maxWidth = radius * 1.5;
+        
+        for (let word of words) {
+            const testLine = line + word + ' ';
+            const metrics = this.ctx.measureText(testLine);
+            if (metrics.width > maxWidth && line !== '') {
+                lines.push(line);
+                line = word + ' ';
+            } else {
+                line = testLine;
+            }
+        }
+        lines.push(line);
+        
+        // Limit to 3 lines and add ellipsis if needed
+        if (lines.length > 3) {
+            lines = lines.slice(0, 3);
+            lines[2] = lines[2].trim() + '...';
+        }
+        
+        // Draw each line
+        const lineHeight = 20;
+        const startY = idea.y - ((lines.length - 1) * lineHeight) / 2;
+        lines.forEach((line, i) => {
+            this.ctx.fillText(line.trim(), idea.x, startY + (i * lineHeight));
+        });
     }
 
     drawConnections() {
-        this.ctx.strokeStyle = '#666';
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
         this.ctx.lineWidth = 2;
 
         this.connections.forEach(conn => {
@@ -174,15 +185,17 @@ class CanvasManager {
         this.ideas.forEach(idea => this.drawIdea(idea));
     }
 
-    addIdea(x, y, text, isAIGenerated = false) {
-        const idea = { x, y, text, isAIGenerated };
+    addIdea(x, y, text, isAIGenerated = false, isCombined = false) {
+        const idea = { x, y, text, isAIGenerated, isCombined };
         this.ideas.push(idea);
-        this.centerOnPoint(x, y);
+        
+        // Center viewport on new idea
+        const workspace = this.canvas.parentElement;
+        workspace.scrollLeft = x - workspace.clientWidth / 2;
+        workspace.scrollTop = y - workspace.clientHeight / 2;
+        
+        this.render();
         return idea;
-    }
-
-    connectIdeas(idea1, idea2) {
-        this.connections.push({ from: idea1, to: idea2 });
     }
 
     getIdeaAtPosition(x, y) {
@@ -190,73 +203,12 @@ class CanvasManager {
         return this.ideas.find(idea => {
             const dx = idea.x - x;
             const dy = idea.y - y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            return distance <= clickRadius;
+            return Math.sqrt(dx * dx + dy * dy) <= clickRadius;
         });
     }
 
-    handleMouseDown(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const container = this.canvas.parentElement;
-        const x = e.clientX - rect.left + container.scrollLeft;
-        const y = e.clientY - rect.top + container.scrollTop;
-        
-        const clickedIdea = this.getIdeaAtPosition(x, y);
-        if (clickedIdea) {
-            e.stopPropagation(); // Prevent modal from showing
-            this.selectedIdea = clickedIdea;
-            this.isDragging = true;
-            console.log('Starting drag operation:', clickedIdea);
-        }
-    }
-
-    handleMouseMove(e) {
-        if (!this.isDragging || !this.selectedIdea) {
-            return;
-        }
-
-        const rect = this.canvas.getBoundingClientRect();
-        const container = this.canvas.parentElement;
-        const newX = e.clientX - rect.left + container.scrollLeft;
-        const newY = e.clientY - rect.top + container.scrollTop;
-        
-        this.selectedIdea.x = newX;
-        this.selectedIdea.y = newY;
+    connectIdeas(idea1, idea2) {
+        this.connections.push({ from: idea1, to: idea2 });
         this.render();
-    }
-
-    handleMouseUp(e) {
-        if (this.isDragging && this.selectedIdea) {
-            console.log('Finished dragging idea:', this.selectedIdea);
-            this.centerOnPoint(this.selectedIdea.x, this.selectedIdea.y);
-        }
-        this.isDragging = false;
-        this.selectedIdea = null;
-    }
-
-    handleClick(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const container = this.canvas.parentElement;
-        const x = e.clientX - rect.left + container.scrollLeft;
-        const y = e.clientY - rect.top + container.scrollTop;
-        
-        const clickedIdea = this.getIdeaAtPosition(x, y);
-        console.log('Canvas clicked:', { x, y, clickedIdea });
-        
-        if (clickedIdea) {
-            // Show tooltip for clicked idea
-            this.updateTooltip(e, true);
-            e.stopPropagation(); // Prevent modal from showing
-            return;
-        }
-        
-        if (!this.isDragging) {
-            // Only dispatch event for creating new idea if not dragging and not clicking existing idea
-            console.log('Dispatching canvas-click event for new idea:', { x, y });
-            const event = new CustomEvent('canvas-click', {
-                detail: { x, y }
-            });
-            document.dispatchEvent(event);
-        }
     }
 }
