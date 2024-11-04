@@ -1,6 +1,10 @@
 :root {
-    --header-height: 80px;
+    --header-height: 0px;  /* Changed from 80px */
     --controls-height: 70px;
+}
+
+header {
+    display: none;  /* Hide header */
 }
 
 body {
@@ -9,11 +13,6 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
-}
-
-header {
-    height: var(--header-height);
-    flex-shrink: 0;
 }
 
 .ideas-history {
@@ -116,17 +115,20 @@ header {
     cursor: move;
     transition: transform 0.2s;
     user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .idea-ball-inner {
-    width: 100%;
-    height: 100%;
+    width: 90%;
+    height: 90%;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 15px;
+    padding: 10px;
     color: white;
     font-size: 14px;
     line-height: 1.2;
@@ -138,7 +140,7 @@ header {
     max-height: 100%;
     overflow: hidden;
     display: -webkit-box;
-    -webkit-line-clamp: 4;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     text-overflow: ellipsis;
     word-wrap: break-word;
