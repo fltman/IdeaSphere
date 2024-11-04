@@ -7,31 +7,22 @@ body {
     flex-direction: column;
 }
 
-.container {
-    padding: 0;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
 header {
-    padding: 1rem 0;
+    flex-shrink: 0;
 }
 
 .canvas-container {
-    width: 100%;
     flex: 1;
-    border: 2px solid var(--bs-secondary);
-    border-radius: 8px;
-    overflow: auto;
+    width: 100vw;
     position: relative;
+    overflow: auto;
 }
 
 #ideaCanvas {
     cursor: pointer;
     position: absolute;
-    min-width: 100%;
-    min-height: 100%;
+    top: 0;
+    left: 0;
 }
 
 .controls {
@@ -45,6 +36,7 @@ header {
     padding: 1rem;
     background: var(--bs-body-bg);
     border-top: 1px solid var(--bs-secondary);
+    z-index: 1000;
 }
 
 .idea-tooltip {

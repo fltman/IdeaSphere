@@ -8,24 +8,22 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <header class="text-center py-4">
-            <h1>Idébyggare</h1>
-            <p>Klicka på arbetsytan för att skapa en ny idéboll</p>
-        </header>
+    <header class="text-center py-3">
+        <h1>Idébyggare</h1>
+        <p>Klicka på arbetsytan för att skapa en ny idéboll</p>
+    </header>
 
-        <div class="canvas-container">
-            <canvas id="ideaCanvas"></canvas>
-        </div>
+    <div class="canvas-container">
+        <canvas id="ideaCanvas"></canvas>
+    </div>
 
-        <div class="controls mt-3">
-            <button id="generateIdeas" class="btn btn-secondary" disabled>
-                Generera relaterade idéer
-            </button>
-            <button id="clearCanvas" class="btn btn-outline-danger">
-                Rensa arbetsyta
-            </button>
-        </div>
+    <div class="controls">
+        <button id="generateIdeas" class="btn btn-secondary" disabled>
+            Generera relaterade idéer
+        </button>
+        <button id="clearCanvas" class="btn btn-outline-danger">
+            Rensa arbetsyta
+        </button>
     </div>
 
     <div class="modal fade" id="ideaModal" tabindex="-1">

@@ -7,9 +7,6 @@ class CanvasManager {
         this.isDragging = false;
         this.connections = [];
         this.tooltip = this.createTooltip();
-        this.offset = { x: 0, y: 0 };
-        this.canvasSize = { width: 3000, height: 3000 }; // Large canvas for scrolling
-
         this.setupCanvas();
         this.setupEventListeners();
     }
@@ -23,34 +20,33 @@ class CanvasManager {
     }
 
     setupCanvas() {
-        this.canvas.width = this.canvasSize.width;
-        this.canvas.height = this.canvasSize.height;
-        this.centerOffset();
-    }
-
-    centerOffset() {
         const container = this.canvas.parentElement;
-        this.offset.x = (this.canvasSize.width - container.clientWidth) / 2;
-        this.offset.y = (this.canvasSize.height - container.clientHeight) / 2;
-        container.scrollLeft = this.offset.x;
-        container.scrollTop = this.offset.y;
+        const headerHeight = document.querySelector('header').offsetHeight;
+        const controlsHeight = document.querySelector('.controls').offsetHeight;
+        const availableHeight = window.innerHeight - headerHeight - controlsHeight;
+        
+        // Make the canvas large enough to accommodate ideas
+        this.canvas.width = Math.max(window.innerWidth * 2, 3000);
+        this.canvas.height = Math.max(availableHeight * 2, 3000);
+        
+        // Center the viewport
+        container.scrollLeft = (this.canvas.width - container.clientWidth) / 2;
+        container.scrollTop = (this.canvas.height - container.clientHeight) / 2;
     }
 
     setupEventListeners() {
-        window.addEventListener('resize', () => this.handleResize());
+        window.addEventListener('resize', () => {
+            this.setupCanvas();
+            this.render();
+        });
         
         this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         this.canvas.addEventListener('mouseup', () => this.handleMouseUp());
         this.canvas.addEventListener('click', (e) => this.handleClick(e));
         
-        // Handle mouse enter/leave for tooltip
         this.canvas.addEventListener('mousemove', (e) => this.updateTooltip(e));
         this.canvas.addEventListener('mouseleave', () => this.hideTooltip());
-    }
-
-    handleResize() {
-        this.render();
     }
 
     updateTooltip(e) {
