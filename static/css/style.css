@@ -103,8 +103,10 @@ body {
     100% { transform: scale(1); }
 }
 
-.idea-ball.generating {
-    animation: pulsate 1s ease-in-out infinite;
+@keyframes floating {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+    100% { transform: translateY(0px); }
 }
 
 .idea-ball {
@@ -113,11 +115,30 @@ body {
     height: 120px;
     border-radius: 50%;
     cursor: move;
-    transition: transform 0.2s;
     user-select: none;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(5px);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: floating 3s ease-in-out infinite;
+}
+
+.idea-ball:hover {
+    animation: none;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.idea-ball.generating {
+    animation: pulsate 1s ease-in-out infinite;
+}
+
+.idea-ball.selected,
+.idea-ball.merge-mode {
+    animation: none;
+    transform: scale(1.1);
 }
 
 .idea-ball-inner {
@@ -132,7 +153,18 @@ body {
     color: white;
     font-size: 14px;
     line-height: 1.2;
-    overflow: hidden;
+    background: rgba(100, 149, 237, 0.85);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.2);
+}
+
+.idea-ball:hover .idea-ball-inner {
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.idea-ball.ai .idea-ball-inner {
+    background: rgba(152, 251, 152, 0.85);
+    color: #333;
 }
 
 .idea-ball-text {
@@ -146,40 +178,6 @@ body {
     word-wrap: break-word;
     margin: 0;
     padding: 0;
-}
-
-.idea-ball.selected {
-    box-shadow: 0 0 0 4px #ffc107;
-    transform: scale(1.1);
-}
-
-.idea-ball.merge-mode {
-    box-shadow: 0 0 0 4px var(--bs-warning);
-    transform: scale(1.1);
-}
-
-.idea-ball.main .idea-ball-inner {
-    background: #6495ED;
-}
-
-.idea-ball.ai .idea-ball-inner {
-    background: #98FB98;
-    color: #333;
-}
-
-.controls {
-    height: var(--controls-height);
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    padding: 1rem;
-    background: var(--bs-body-bg);
-    border-top: 1px solid var(--bs-secondary);
-    z-index: 1000;
 }
 
 .idea-tooltip {
@@ -198,6 +196,21 @@ body {
     font-size: 14px;
     line-height: 1.4;
     word-wrap: break-word;
+}
+
+.controls {
+    height: var(--controls-height);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    padding: 1rem;
+    background: var(--bs-body-bg);
+    border-top: 1px solid var(--bs-secondary);
+    z-index: 1000;
 }
 
 .info-btn,
