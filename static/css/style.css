@@ -127,6 +127,12 @@ header {
 }
 
 .idea-tooltip {
+    position: absolute;
+    left: 130px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: auto;
+    z-index: 1000;
     background: rgba(33, 37, 41, 0.95);
     color: white;
     padding: 1rem;
@@ -135,8 +141,5 @@ header {
     max-width: 300px;
     font-size: 14px;
     line-height: 1.4;
-    position: absolute;
-    z-index: 1000;
-    pointer-events: none;
     word-wrap: break-word;
 }

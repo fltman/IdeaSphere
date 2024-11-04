@@ -8,6 +8,7 @@ class IdeaManager {
         this.selectedIdea = null;
         this.isSelectMode = false;
         this.selectedIdeas = [];
+        this.activeTooltip = null;
         this.setupEventListeners();
     }
 
@@ -266,21 +267,29 @@ class IdeaManager {
     }
 
     showTooltip(element, text) {
+        // If there's already a tooltip for this element, remove it
+        if (this.activeTooltip && this.activeTooltip.parentElement === element) {
+            this.hideAllTooltips();
+            this.activeTooltip = null;
+            return;
+        }
+
+        // Hide any other visible tooltips
         this.hideAllTooltips();
+
+        // Create and show new tooltip
         const tooltip = document.createElement('div');
         tooltip.className = 'idea-tooltip';
         tooltip.textContent = text;
-        tooltip.style.position = 'absolute';
         
-        const rect = element.getBoundingClientRect();
-        tooltip.style.left = `${rect.right + 10}px`;
-        tooltip.style.top = `${rect.top}px`;
-        
-        document.body.appendChild(tooltip);
+        // Position tooltip next to the idea ball
+        element.appendChild(tooltip);
+        this.activeTooltip = tooltip;
     }
 
     hideAllTooltips() {
         document.querySelectorAll('.idea-tooltip').forEach(tooltip => tooltip.remove());
+        this.activeTooltip = null;
     }
 
     clearWorkspace() {
