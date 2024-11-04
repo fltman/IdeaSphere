@@ -121,5 +121,156 @@ class IdeaManager {
         this.startTimer();
     }
 
-    // ... rest of the IdeaManager class implementation ...
-    [Previous implementation continues unchanged]
+    setupEventListeners() {
+        this.workspace.addEventListener('click', (e) => {
+            const event = new CustomEvent('workspace-click', {
+                detail: {
+                    x: e.clientX - this.workspace.getBoundingClientRect().left + this.workspace.scrollLeft,
+                    y: e.clientY - this.workspace.getBoundingClientRect().top + this.workspace.scrollTop
+                }
+            });
+            document.dispatchEvent(event);
+        });
+    }
+
+    addIdea(x, y, text, isAIGenerated = false) {
+        const ideaBall = document.createElement('div');
+        ideaBall.className = `idea-ball ${isAIGenerated ? 'ai' : 'main'}`;
+        ideaBall.style.left = `${x}px`;
+        ideaBall.style.top = `${y}px`;
+        ideaBall.textContent = text;
+        ideaBall.draggable = true;
+
+        // Add generate button
+        const generateBtn = document.createElement('button');
+        generateBtn.className = 'btn btn-sm btn-success generate-btn';
+        generateBtn.innerHTML = '+';
+        generateBtn.style.position = 'absolute';
+        generateBtn.style.right = '-10px';
+        generateBtn.style.top = '-10px';
+        ideaBall.appendChild(generateBtn);
+
+        // Add info button
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'btn btn-sm btn-info info-btn';
+        infoBtn.innerHTML = 'i';
+        infoBtn.style.position = 'absolute';
+        infoBtn.style.left = '-10px';
+        infoBtn.style.top = '-10px';
+        ideaBall.appendChild(infoBtn);
+
+        // Add merge button
+        const mergeBtn = document.createElement('button');
+        mergeBtn.className = 'btn btn-sm btn-warning merge-btn';
+        mergeBtn.innerHTML = '⚡';
+        mergeBtn.style.position = 'absolute';
+        mergeBtn.style.right = '-10px';
+        mergeBtn.style.bottom = '-10px';
+        ideaBall.appendChild(mergeBtn);
+
+        this.setupDragListeners(ideaBall);
+        
+        this.workspace.appendChild(ideaBall);
+        const idea = { element: ideaBall, text: text };
+        this.ideas.push(idea);
+        this.addToHistory(text, true);
+        return idea;
+    }
+
+    setupDragListeners(ideaBall) {
+        ideaBall.addEventListener('dragstart', (e) => {
+            if (!this.isSelectMode) {
+                this.isDragging = true;
+                this.selectedIdea = ideaBall;
+                const rect = ideaBall.getBoundingClientRect();
+                this.dragStartPos = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+                const dragImage = document.createElement('div');
+                dragImage.style.width = '0';
+                dragImage.style.height = '0';
+                document.body.appendChild(dragImage);
+                e.dataTransfer.setDragImage(dragImage, 0, 0);
+                setTimeout(() => document.body.removeChild(dragImage), 0);
+            }
+        });
+
+        ideaBall.addEventListener('drag', (e) => {
+            if (this.isSelectMode || e.clientX === 0 && e.clientY === 0) return;
+            
+            const rect = this.workspace.getBoundingClientRect();
+            const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
+            const y = e.clientY - rect.top + this.workspace.scrollTop - this.dragStartPos.y;
+            
+            const minPadding = 120;
+            const boundedX = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
+            const boundedY = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
+            
+            ideaBall.style.transform = 'translate(0, 0)';
+            ideaBall.style.left = `${boundedX}px`;
+            ideaBall.style.top = `${boundedY}px`;
+        });
+    }
+
+    connectIdeas(idea1, idea2) {
+        const connection = { from: idea1, to: idea2 };
+        this.connections.push(connection);
+    }
+
+    clearWorkspace() {
+        while (this.workspace.firstChild) {
+            this.workspace.removeChild(this.workspace.firstChild);
+        }
+        this.ideas = [];
+        this.connections = [];
+    }
+
+    addToHistory(text, isGenerated = true) {
+        if (isGenerated) {
+            this.generatedIdeas.unshift(text);
+            if (this.generatedIdeas.length > this.maxHistoryItems) {
+                this.generatedIdeas.pop();
+            }
+            this.updateHistoryList();
+        }
+    }
+
+    updateHistoryList() {
+        const list = document.getElementById('ideas-list');
+        list.innerHTML = '';
+        this.generatedIdeas.forEach(text => {
+            const li = document.createElement('li');
+            li.textContent = text;
+            list.appendChild(li);
+        });
+    }
+
+    enterSelectMode() {
+        this.isSelectMode = true;
+        this.selectedIdeas = [];
+    }
+
+    exitSelectMode() {
+        this.isSelectMode = false;
+        this.selectedIdeas.forEach(idea => {
+            idea.element.classList.remove('selected');
+        });
+        this.selectedIdeas = [];
+    }
+
+    handleIdeaSelection(ideaBall) {
+        const idea = this.ideas.find(i => i.element === ideaBall);
+        const index = this.selectedIdeas.indexOf(idea);
+        
+        if (index === -1) {
+            if (this.selectedIdeas.length < 2) {
+                ideaBall.classList.add('selected');
+                this.selectedIdeas.push(idea);
+            }
+        } else {
+            ideaBall.classList.remove('selected');
+            this.selectedIdeas.splice(index, 1);
+        }
+    }
+}
