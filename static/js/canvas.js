@@ -1,6 +1,10 @@
 class CanvasManager {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
+        if (!this.canvas) {
+            throw new Error(`Canvas element with id '${canvasId}' not found`);
+        }
+        
         this.ctx = this.canvas.getContext('2d');
         this.ideas = [];
         this.selectedIdea = null;
@@ -8,6 +12,7 @@ class CanvasManager {
         this.connections = [];
         this.tooltip = this.createTooltip();
         this.isPermanentTooltip = false;
+        
         this.setupCanvas();
         this.setupEventListeners();
         
@@ -19,6 +24,39 @@ class CanvasManager {
         });
     }
 
+    setupEventListeners() {
+        this.canvas.addEventListener('mousemove', (e) => {
+            if (!this.isDragging) {
+                this.updateTooltip(e);
+            }
+        });
+
+        this.canvas.addEventListener('mouseleave', () => {
+            if (!this.isPermanentTooltip) {
+                this.hideTooltip();
+            }
+        });
+
+        this.canvas.addEventListener('click', (e) => {
+            const idea = this.getIdeaAtPosition(
+                e.clientX + this.canvas.parentElement.scrollLeft - this.canvas.parentElement.offsetLeft,
+                e.clientY + this.canvas.parentElement.scrollTop - this.canvas.parentElement.offsetTop
+            );
+            
+            if (idea) {
+                this.updateTooltip(e, true);
+                e.stopPropagation();
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!this.canvas.contains(e.target) && this.isPermanentTooltip) {
+                this.hideTooltip();
+            }
+        });
+    }
+
+    // Rest of the methods remain the same...
     createTooltip() {
         const tooltip = document.createElement('div');
         tooltip.className = 'idea-tooltip';
