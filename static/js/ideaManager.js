@@ -11,7 +11,29 @@ class IdeaManager {
         this.activeTooltip = null;
         this.isMergeMode = false;
         this.mergeIdeas = [];
+        this.generatedIdeas = [];
+        this.maxHistoryItems = 10;
         this.setupEventListeners();
+    }
+
+    addToHistory(text, isGenerated = true) {
+        if (isGenerated) {
+            this.generatedIdeas.unshift(text);
+            if (this.generatedIdeas.length > this.maxHistoryItems) {
+                this.generatedIdeas.pop();
+            }
+            this.updateHistoryList();
+        }
+    }
+
+    updateHistoryList() {
+        const list = document.getElementById('ideas-list');
+        list.innerHTML = '';
+        this.generatedIdeas.forEach(text => {
+            const li = document.createElement('li');
+            li.textContent = text;
+            list.appendChild(li);
+        });
     }
 
     setupEventListeners() {
@@ -174,6 +196,7 @@ class IdeaManager {
                 const newIdea = this.addIdea(midX, midY, combinedIdeas[0].text);
                 this.connectIdeas(idea1, newIdea);
                 this.connectIdeas(idea2, newIdea);
+                this.addToHistory(combinedIdeas[0].text);
             }
         } finally {
             this.mergeIdeas.forEach(idea => {
@@ -235,6 +258,7 @@ class IdeaManager {
                     console.log('Creating related idea:', { text: newIdea.text, x: newX, y: newY });
                     const subIdea = this.addIdea(newX, newY, newIdea.text, true);
                     this.connectIdeas(this.ideas.find(i => i.element === ideaBall), subIdea);
+                    this.addToHistory(newIdea.text);
                 });
 
                 this.centerOnPoint(parseInt(ideaBall.style.left), parseInt(ideaBall.style.top));
@@ -354,5 +378,7 @@ class IdeaManager {
         this.ideas = [];
         this.connections = [];
         this.exitSelectMode();
+        this.generatedIdeas = [];
+        this.updateHistoryList();
     }
 }
