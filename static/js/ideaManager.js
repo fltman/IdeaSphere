@@ -46,6 +46,44 @@ class IdeaManager {
         });
     }
 
+    enterSelectMode() {
+        this.isSelectMode = true;
+        this.selectedIdeas = [];
+        this.ideas.forEach(idea => {
+            idea.element.addEventListener('click', this.handleIdeaSelection);
+            idea.element.style.cursor = 'pointer';
+        });
+    }
+
+    exitSelectMode() {
+        this.isSelectMode = false;
+        this.selectedIdeas.forEach(idea => {
+            idea.element.classList.remove('merge-mode');
+        });
+        this.ideas.forEach(idea => {
+            idea.element.removeEventListener('click', this.handleIdeaSelection);
+            idea.element.style.cursor = 'move';
+        });
+        this.selectedIdeas = [];
+    }
+
+    handleIdeaSelection = (e) => {
+        e.stopPropagation();
+        const clickedElement = e.currentTarget;
+        const idea = this.ideas.find(i => i.element === clickedElement);
+        
+        if (idea) {
+            const index = this.selectedIdeas.findIndex(i => i === idea);
+            if (index === -1 && this.selectedIdeas.length < 2) {
+                this.selectedIdeas.push(idea);
+                clickedElement.classList.add('merge-mode');
+            } else if (index !== -1) {
+                this.selectedIdeas.splice(index, 1);
+                clickedElement.classList.remove('merge-mode');
+            }
+        }
+    }
+
     updateCountdownDisplay() {
         if (!this.countdownDisplay) return;
         
@@ -70,7 +108,7 @@ class IdeaManager {
                 this.updateCountdownDisplay();
                 
                 if (this.remainingTime === 0) {
-                    this.stopTimer();
+                    this.handleTimerExpired();
                 }
             }
         }, 100);
@@ -176,73 +214,56 @@ class IdeaManager {
                     continue;
                 }
 
-                const pos1X = parseInt(idea1.element.style.left);
-                const pos1Y = parseInt(idea1.element.style.top);
-                const pos2X = parseInt(idea2.element.style.left);
-                const pos2Y = parseInt(idea2.element.style.top);
+                const pos1 = {
+                    x: parseInt(idea1.element.style.left),
+                    y: parseInt(idea1.element.style.top)
+                };
+                const pos2 = {
+                    x: parseInt(idea2.element.style.left),
+                    y: parseInt(idea2.element.style.top)
+                };
 
-                const dx = pos2X - pos1X;
-                const dy = pos2Y - pos1Y;
+                const dx = pos2.x - pos1.x;
+                const dy = pos2.y - pos1.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const minDistance = 120;
 
                 if (distance < minDistance) {
                     const angle = Math.atan2(dy, dx);
-                    
-                    // Calculate relative velocity
                     const vel1 = this.velocities.get(idea1) || { x: 0, y: 0 };
                     const vel2 = this.velocities.get(idea2) || { x: 0, y: 0 };
-                    
-                    // Calculate velocities along the normal
-                    const normal = { x: dx / distance, y: dy / distance };
-                    const relativeVel = {
-                        x: vel1.x - vel2.x,
-                        y: vel1.y - vel2.y
+
+                    const speed1 = Math.sqrt(vel1.x * vel1.x + vel1.y * vel1.y);
+                    const speed2 = Math.sqrt(vel2.x * vel2.x + vel2.y * vel2.y);
+
+                    const newVel1 = {
+                        x: speed2 * Math.cos(angle),
+                        y: speed2 * Math.sin(angle)
                     };
-                    
-                    // Calculate relative velocity along the normal
-                    const normalVelocity = relativeVel.x * normal.x + relativeVel.y * normal.y;
-                    
-                    // Only separate if balls are moving towards each other
-                    if (normalVelocity < 0) {
-                        // Coefficient of restitution (bounciness)
-                        const restitution = 0.6;
-                        
-                        // Calculate impulse scalar
-                        const impulse = -(1 + restitution) * normalVelocity;
-                        
-                        // Apply impulse to both balls
-                        const impulseX = impulse * normal.x;
-                        const impulseY = impulse * normal.y;
-                        
-                        vel1.x += impulseX;
-                        vel1.y += impulseY;
-                        vel2.x -= impulseX;
-                        vel2.y -= impulseY;
-                        
-                        // Apply position correction to prevent sticking
-                        const percent = 0.8;
-                        const slop = 1.0;
-                        const overlap = minDistance - distance;
-                        const correction = Math.max(overlap - slop, 0.0) / (2.0) * percent;
-                        const correctionX = normal.x * correction;
-                        const correctionY = normal.y * correction;
-                        
-                        idea1.element.style.left = `${pos1X - correctionX}px`;
-                        idea1.element.style.top = `${pos1Y - correctionY}px`;
-                        idea2.element.style.left = `${pos2X + correctionX}px`;
-                        idea2.element.style.top = `${pos2Y + correctionY}px`;
-                        
-                        // Update velocities with damping
-                        const collisionDamping = 0.98;
-                        vel1.x *= collisionDamping;
-                        vel1.y *= collisionDamping;
-                        vel2.x *= collisionDamping;
-                        vel2.y *= collisionDamping;
-                        
-                        this.velocities.set(idea1, vel1);
-                        this.velocities.set(idea2, vel2);
+                    const newVel2 = {
+                        x: speed1 * Math.cos(angle + Math.PI),
+                        y: speed1 * Math.sin(angle + Math.PI)
+                    };
+
+                    if (speed1 < 0.1 && speed2 < 0.1) {
+                        const pushForce = 100;
+                        newVel1.x = pushForce * Math.cos(angle);
+                        newVel1.y = pushForce * Math.sin(angle);
+                        newVel2.x = -pushForce * Math.cos(angle);
+                        newVel2.y = -pushForce * Math.sin(angle);
                     }
+
+                    this.velocities.set(idea1, newVel1);
+                    this.velocities.set(idea2, newVel2);
+
+                    const overlap = minDistance - distance;
+                    const separationX = (overlap * dx) / distance / 2;
+                    const separationY = (overlap * dy) / distance / 2;
+
+                    idea1.element.style.left = `${pos1.x - separationX}px`;
+                    idea1.element.style.top = `${pos1.y - separationY}px`;
+                    idea2.element.style.left = `${pos2.x + separationX}px`;
+                    idea2.element.style.top = `${pos2.y + separationY}px`;
                 }
             }
         }
@@ -250,154 +271,285 @@ class IdeaManager {
         this.drawConnections();
     }
 
-    enterSelectMode() {
-        this.isSelectMode = true;
-        this.selectedIdeas = [];
-        this.ideas.forEach(idea => {
-            idea.element.addEventListener('click', this.handleIdeaSelection);
-            idea.element.style.cursor = 'pointer';
-        });
-    }
+    setupDragListeners(ideaBall) {
+        ideaBall.addEventListener('dragstart', (e) => {
+            if (!this.isSelectMode) {
+                this.isDragging = true;
+                this.selectedIdea = ideaBall;
+                const rect = ideaBall.getBoundingClientRect();
+                this.dragStartPos = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+                const dragImage = document.createElement('div');
+                dragImage.style.width = '0';
+                dragImage.style.height = '0';
+                document.body.appendChild(dragImage);
+                e.dataTransfer.setDragImage(dragImage, 0, 0);
+                setTimeout(() => document.body.removeChild(dragImage), 0);
 
-    exitSelectMode() {
-        this.isSelectMode = false;
-        this.selectedIdeas.forEach(idea => {
-            idea.element.classList.remove('merge-mode');
-            idea.element.classList.remove('selected');
-        });
-        this.ideas.forEach(idea => {
-            idea.element.removeEventListener('click', this.handleIdeaSelection);
-            idea.element.style.cursor = 'move';
-        });
-        this.selectedIdeas = [];
-    }
-
-    handleIdeaSelection = (e) => {
-        e.stopPropagation();
-        const clickedElement = e.currentTarget;
-        const idea = this.ideas.find(i => i.element === clickedElement);
-        
-        if (idea) {
-            const index = this.selectedIdeas.findIndex(i => i === idea);
-            if (index === -1 && this.selectedIdeas.length < 2) {
-                this.selectedIdeas.push(idea);
-                clickedElement.classList.add('merge-mode');
-                clickedElement.classList.add('selected');
-            } else if (index !== -1) {
-                this.selectedIdeas.splice(index, 1);
-                clickedElement.classList.remove('merge-mode');
-                clickedElement.classList.remove('selected');
+                const idea = this.ideas.find(i => i.element === ideaBall);
+                this.velocities.set(idea, { x: 0, y: 0 });
             }
-        }
-    }
-
-    clearWorkspace() {
-        this.ideas.forEach(idea => {
-            idea.element.remove();
         });
-        this.ideas = [];
-        this.connections = [];
-        this.velocities.clear();
-        this.drawConnections();
-    }
 
-    addIdea(x, y, text, isAIGenerated = false, isCombined = false) {
-        const ideaBall = document.createElement('div');
-        ideaBall.className = `idea-ball ${isAIGenerated ? 'ai' : ''} ${isCombined ? 'combined' : ''}`;
-        ideaBall.style.left = `${x}px`;
-        ideaBall.style.top = `${y}px`;
-        
-        const inner = document.createElement('div');
-        inner.className = 'idea-ball-inner';
-        
-        const textContainer = document.createElement('div');
-        textContainer.className = 'idea-ball-text';
-        textContainer.textContent = text;
-        
-        inner.appendChild(textContainer);
-        ideaBall.appendChild(inner);
-        this.workspace.appendChild(ideaBall);
-        
-        const idea = { element: ideaBall, text };
-        this.ideas.push(idea);
-        this.velocities.set(idea, { x: 0, y: 0 });
-        
-        this.setupDragListeners(ideaBall);
-        return idea;
-    }
-
-    setupDragListeners(element) {
-        let startX, startY;
-        
-        element.addEventListener('mousedown', (e) => {
-            if (this.isSelectMode) return;
-            
-            this.isDragging = true;
-            this.selectedIdea = this.ideas.find(idea => idea.element === element);
+        ideaBall.addEventListener('drag', (e) => {
+            if (this.isSelectMode || e.clientX === 0 && e.clientY === 0) return;
             
             const rect = this.workspace.getBoundingClientRect();
-            startX = e.clientX - rect.left + this.workspace.scrollLeft;
-            startY = e.clientY - rect.top + this.workspace.scrollTop;
+            const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
+            const y = e.clientY - rect.top + this.workspace.scrollTop - this.dragStartPos.y;
             
-            element.style.zIndex = '1000';
-        });
-        
-        this.workspace.addEventListener('mousemove', (e) => {
-            if (!this.isDragging || !this.selectedIdea) return;
+            const minPadding = 120;
+            const boundedX = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
+            const boundedY = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
             
-            const rect = this.workspace.getBoundingClientRect();
-            const x = e.clientX - rect.left + this.workspace.scrollLeft;
-            const y = e.clientY - rect.top + this.workspace.scrollTop;
-            
-            element.style.left = `${x}px`;
-            element.style.top = `${y}px`;
-            
+            ideaBall.style.transform = 'translate(0, 0)';
+            ideaBall.style.left = `${boundedX}px`;
+            ideaBall.style.top = `${boundedY}px`;
             this.drawConnections();
         });
-        
-        document.addEventListener('mouseup', () => {
-            if (this.isDragging && this.selectedIdea) {
-                const rect = element.getBoundingClientRect();
-                const workspaceRect = this.workspace.getBoundingClientRect();
-                
-                element.style.zIndex = '';
-                this.isDragging = false;
-                this.selectedIdea = null;
-            }
-        });
-    }
 
-    connectIdeas(idea1, idea2) {
-        this.connections.push({ from: idea1, to: idea2 });
-        this.drawConnections();
+        ideaBall.addEventListener('dragend', (e) => {
+            if (this.isDragging && this.selectedIdea) {
+                const idea = this.ideas.find(i => i.element === this.selectedIdea);
+                if (idea) {
+                    const lastX = parseInt(this.selectedIdea.style.left);
+                    const lastY = parseInt(this.selectedIdea.style.top);
+                    const deltaX = lastX - parseInt(this.selectedIdea.style.left);
+                    const deltaY = lastY - parseInt(this.selectedIdea.style.top);
+                    
+                    this.velocities.set(idea, {
+                        x: deltaX * 5,
+                        y: deltaY * 5
+                    });
+                }
+            }
+            this.isDragging = false;
+            this.selectedIdea = null;
+        });
     }
 
     drawConnections() {
         const canvas = document.getElementById('connections-canvas');
-        if (!canvas) return;
-        
         const ctx = canvas.getContext('2d');
+        
         canvas.width = this.workspace.scrollWidth;
         canvas.height = this.workspace.scrollHeight;
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.lineWidth = 2;
         
         this.connections.forEach(conn => {
-            const pos1 = conn.from.element.getBoundingClientRect();
-            const pos2 = conn.to.element.getBoundingClientRect();
+            const fromRect = conn.from.element.getBoundingClientRect();
+            const toRect = conn.to.element.getBoundingClientRect();
             const workspaceRect = this.workspace.getBoundingClientRect();
             
-            const x1 = pos1.left - workspaceRect.left + pos1.width / 2 + this.workspace.scrollLeft;
-            const y1 = pos1.top - workspaceRect.top + pos1.height / 2 + this.workspace.scrollTop;
-            const x2 = pos2.left - workspaceRect.left + pos2.width / 2 + this.workspace.scrollLeft;
-            const y2 = pos2.top - workspaceRect.top + pos2.height / 2 + this.workspace.scrollTop;
+            const fromX = fromRect.left - workspaceRect.left + this.workspace.scrollLeft + fromRect.width/2;
+            const fromY = fromRect.top - workspaceRect.top + this.workspace.scrollTop + fromRect.height/2;
+            const toX = toRect.left - workspaceRect.left + this.workspace.scrollLeft + toRect.width/2;
+            const toY = toRect.top - workspaceRect.top + this.workspace.scrollTop + toRect.height/2;
             
             ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
             ctx.stroke();
         });
+    }
+
+    addIdea(x, y, text, isAIGenerated = false, isCombined = false) {
+        const ideaBall = document.createElement('div');
+        ideaBall.className = `idea-ball ${isAIGenerated ? 'ai' : 'main'} ${isCombined ? 'combined' : ''}`;
+        ideaBall.style.left = `${x}px`;
+        ideaBall.style.top = `${y}px`;
+        
+        const textContainer = document.createElement('div');
+        textContainer.className = 'idea-ball-inner';
+        textContainer.innerHTML = `<p class='idea-ball-text'>${text}</p>`;
+        ideaBall.appendChild(textContainer);
+        
+        ideaBall.draggable = true;
+
+        const generateBtn = document.createElement('button');
+        generateBtn.className = 'btn btn-sm generate-btn';
+        generateBtn.innerHTML = '+';
+        generateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.handleGenerateClick(ideaBall, text);
+        });
+        ideaBall.appendChild(generateBtn);
+
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'btn btn-sm info-btn';
+        infoBtn.innerHTML = 'i';
+        infoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showTooltip(ideaBall, text);
+        });
+        ideaBall.appendChild(infoBtn);
+
+        const mergeBtn = document.createElement('button');
+        mergeBtn.className = 'btn btn-sm merge-btn';
+        mergeBtn.innerHTML = '⚡';
+        mergeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.handleMergeMode(ideaBall);
+        });
+        ideaBall.appendChild(mergeBtn);
+
+        this.setupDragListeners(ideaBall);
+        
+        this.workspace.appendChild(ideaBall);
+        const idea = { element: ideaBall, text: text };
+        this.ideas.push(idea);
+        this.addToHistory(text, true);
+        return idea;
+    }
+
+    async handleGenerateClick(ideaBall, text) {
+        try {
+            ideaBall.classList.add('generating');
+            
+            const response = await fetch('/generate-ideas', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ idea: text })
+            });
+
+            const data = await response.json();
+            ideaBall.classList.remove('generating');
+            
+            if (data.success) {
+                const relatedIdeas = JSON.parse(data.data).ideas;
+                const radius = 150;
+                
+                const idea = this.ideas.find(i => i.element === ideaBall);
+                relatedIdeas.forEach((relatedIdea, index) => {
+                    const angle = (2 * Math.PI * index) / relatedIdeas.length;
+                    const x = parseInt(ideaBall.style.left) + radius * Math.cos(angle);
+                    const y = parseInt(ideaBall.style.top) + radius * Math.sin(angle);
+                    
+                    const newIdea = this.addIdea(x, y, relatedIdea.text, true);
+                    this.connectIdeas(idea, newIdea);
+                });
+            }
+        } catch (error) {
+            console.error('Error generating ideas:', error);
+            ideaBall.classList.remove('generating');
+        }
+    }
+
+    async handleMergeMode(ideaBall) {
+        const idea = this.ideas.find(i => i.element === ideaBall);
+        const ideaIndex = this.mergeIdeas.indexOf(idea);
+        
+        if (ideaIndex === -1) {
+            if (this.mergeIdeas.length < 2) {
+                ideaBall.classList.add('merge-mode');
+                this.mergeIdeas.push(idea);
+                
+                if (this.mergeIdeas.length === 2) {
+                    const idea1 = this.mergeIdeas[0];
+                    const idea2 = this.mergeIdeas[1];
+                    
+                    idea1.element.classList.add('generating');
+                    idea2.element.classList.add('generating');
+
+                    try {
+                        const response = await fetch('/generate-ideas', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 
+                                idea: `Combine these two ideas: 1. ${idea1.text} 2. ${idea2.text}`
+                            })
+                        });
+
+                        const data = await response.json();
+                        if (data.success) {
+                            const combinedIdeas = JSON.parse(data.data).ideas;
+                            const x1 = parseInt(idea1.element.style.left);
+                            const y1 = parseInt(idea1.element.style.top);
+                            const x2 = parseInt(idea2.element.style.left);
+                            const y2 = parseInt(idea2.element.style.top);
+                            const midX = (x1 + x2) / 2;
+                            const midY = (y1 + y2) / 2;
+                            
+                            const newIdea = this.addIdea(midX, midY, combinedIdeas[0].text, false, true);
+                            this.connectIdeas(idea1, newIdea);
+                            this.connectIdeas(idea2, newIdea);
+                        }
+                    } catch (error) {
+                        console.error('Error merging ideas:', error);
+                    } finally {
+                        idea1.element.classList.remove('generating');
+                        idea2.element.classList.remove('generating');
+                        this.mergeIdeas.forEach(idea => idea.element.classList.remove('merge-mode'));
+                        this.mergeIdeas = [];
+                    }
+                }
+            }
+        } else {
+            ideaBall.classList.remove('merge-mode');
+            this.mergeIdeas.splice(ideaIndex, 1);
+        }
+    }
+
+    connectIdeas(idea1, idea2) {
+        const connection = { from: idea1, to: idea2 };
+        this.connections.push(connection);
+        this.drawConnections();
+    }
+
+    clearWorkspace() {
+        while (this.workspace.firstChild) {
+            this.workspace.removeChild(this.workspace.firstChild);
+        }
+        this.ideas = [];
+        this.connections = [];
+        this.drawConnections();
+    }
+
+    addToHistory(text, isGenerated = true) {
+        if (isGenerated) {
+            this.generatedIdeas.unshift(text);
+            if (this.generatedIdeas.length > this.maxHistoryItems) {
+                this.generatedIdeas.pop();
+            }
+            this.updateHistoryList();
+        }
+    }
+
+    updateHistoryList() {
+        const list = document.getElementById('ideas-list');
+        list.innerHTML = '';
+        this.generatedIdeas.forEach(text => {
+            const li = document.createElement('li');
+            li.textContent = text;
+            list.appendChild(li);
+        });
+    }
+
+    showTooltip(ideaBall, text) {
+        const existingTooltip = ideaBall.querySelector('.idea-tooltip');
+        if (existingTooltip) {
+            existingTooltip.remove();
+            return;
+        }
+        
+        document.querySelectorAll('.idea-tooltip').forEach(tooltip => tooltip.remove());
+        
+        const tooltip = document.createElement('div');
+        tooltip.className = 'idea-tooltip';
+        tooltip.textContent = text;
+        tooltip.style.left = '130px';
+        tooltip.style.top = '50%';
+        tooltip.style.transform = 'translateY(-50%)';
+        ideaBall.appendChild(tooltip);
     }
 }
