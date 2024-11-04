@@ -24,6 +24,7 @@ header {
     background: var(--bs-body-bg);
     min-width: 3000px;
     min-height: 3000px;
+    display: inline-block;  /* Add this to ensure proper horizontal scrolling */
 }
 
 .idea-ball {
