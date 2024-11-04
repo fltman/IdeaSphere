@@ -67,7 +67,7 @@ class IdeaManager {
                 let y = parseInt(idea.element.style.top) + velocity.y * deltaTime;
 
                 // Bounce off workspace boundaries
-                const minPadding = 120;
+                const minPadding = 60;  // Reduced from 120
                 const minX = 250 + minPadding;  // Start after recent ideas box
                 const maxX = this.workspace.clientWidth - minPadding;
                 const minY = minPadding;
@@ -206,7 +206,7 @@ class IdeaManager {
             const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
             const y = e.clientY - rect.top + this.workspace.scrollTop - this.dragStartPos.y;
             
-            const minPadding = 120;
+            const minPadding = 60;  // Reduced from 120
             const minX = 250 + minPadding;  // Start after recent ideas box
             const boundedX = Math.max(minX, Math.min(x, this.workspace.clientWidth - minPadding));
             const boundedY = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
@@ -249,6 +249,22 @@ class IdeaManager {
         inner.className = 'idea-ball-inner';
         inner.innerHTML = `<p class="idea-ball-text">${text}</p>`;
         ideaBall.appendChild(inner);
+
+        // Add action buttons
+        const generateBtn = document.createElement('button');
+        generateBtn.className = 'generate-btn';
+        generateBtn.innerHTML = '+';
+        ideaBall.appendChild(generateBtn);
+
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'info-btn';
+        infoBtn.innerHTML = 'i';
+        ideaBall.appendChild(infoBtn);
+
+        const mergeBtn = document.createElement('button');
+        mergeBtn.className = 'merge-btn';
+        mergeBtn.innerHTML = '⟲';
+        ideaBall.appendChild(mergeBtn);
         
         this.setupDragListeners(ideaBall);
         this.workspace.appendChild(ideaBall);
