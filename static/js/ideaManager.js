@@ -20,6 +20,10 @@ class IdeaManager {
         this.countdownDisplay = document.getElementById('countdownDisplay');
         this.setupEventListeners();
         this.updateCountdownDisplay();
+
+        window.addEventListener('resize', () => {
+            this.drawConnections();
+        });
     }
 
     updateCountdownDisplay() {
@@ -133,6 +137,35 @@ class IdeaManager {
         });
     }
 
+    drawConnections() {
+        const canvas = document.getElementById('connections-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = this.workspace.scrollWidth;
+        canvas.height = this.workspace.scrollHeight;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 2;
+        
+        this.connections.forEach(conn => {
+            const fromRect = conn.from.element.getBoundingClientRect();
+            const toRect = conn.to.element.getBoundingClientRect();
+            const workspaceRect = this.workspace.getBoundingClientRect();
+            
+            const fromX = fromRect.left - workspaceRect.left + this.workspace.scrollLeft + fromRect.width/2;
+            const fromY = fromRect.top - workspaceRect.top + this.workspace.scrollTop + fromRect.height/2;
+            const toX = toRect.left - workspaceRect.left + this.workspace.scrollLeft + toRect.width/2;
+            const toY = toRect.top - workspaceRect.top + this.workspace.scrollTop + toRect.height/2;
+            
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+        });
+    }
+
     addIdea(x, y, text, isAIGenerated = false) {
         const ideaBall = document.createElement('div');
         ideaBall.className = `idea-ball ${isAIGenerated ? 'ai' : 'main'}`;
@@ -141,7 +174,6 @@ class IdeaManager {
         ideaBall.textContent = text;
         ideaBall.draggable = true;
 
-        // Add generate button
         const generateBtn = document.createElement('button');
         generateBtn.className = 'btn btn-sm btn-success generate-btn';
         generateBtn.innerHTML = '+';
@@ -154,7 +186,6 @@ class IdeaManager {
         });
         ideaBall.appendChild(generateBtn);
 
-        // Add info button
         const infoBtn = document.createElement('button');
         infoBtn.className = 'btn btn-sm btn-info info-btn';
         infoBtn.innerHTML = 'i';
@@ -167,7 +198,6 @@ class IdeaManager {
         });
         ideaBall.appendChild(infoBtn);
 
-        // Add merge button
         const mergeBtn = document.createElement('button');
         mergeBtn.className = 'btn btn-sm btn-warning merge-btn';
         mergeBtn.innerHTML = '⚡';
@@ -206,7 +236,6 @@ class IdeaManager {
             
             if (data.success) {
                 const relatedIdeas = JSON.parse(data.data).ideas;
-                const rect = ideaBall.getBoundingClientRect();
                 const radius = 150;
                 
                 const idea = this.ideas.find(i => i.element === ideaBall);
@@ -258,12 +287,14 @@ class IdeaManager {
             ideaBall.style.transform = 'translate(0, 0)';
             ideaBall.style.left = `${boundedX}px`;
             ideaBall.style.top = `${boundedY}px`;
+            this.drawConnections();
         });
     }
 
     connectIdeas(idea1, idea2) {
         const connection = { from: idea1, to: idea2 };
         this.connections.push(connection);
+        this.drawConnections();
     }
 
     clearWorkspace() {
@@ -272,6 +303,7 @@ class IdeaManager {
         }
         this.ideas = [];
         this.connections = [];
+        this.drawConnections();
     }
 
     addToHistory(text, isGenerated = true) {
@@ -323,12 +355,10 @@ class IdeaManager {
     }
 
     showTooltip(ideaBall, text) {
-        // Implementation for showing tooltip
         console.log('Showing tooltip for:', text);
     }
 
     handleMergeMode(ideaBall) {
-        // Implementation for merge mode
         console.log('Handling merge mode for idea ball');
     }
 }
