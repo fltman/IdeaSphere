@@ -172,7 +172,6 @@ class IdeaManager {
         ideaBall.style.left = `${x}px`;
         ideaBall.style.top = `${y}px`;
         
-        // Create inner container for text
         const textContainer = document.createElement('div');
         textContainer.className = 'idea-ball-inner';
         textContainer.innerHTML = `<p class='idea-ball-text'>${text}</p>`;
@@ -382,6 +381,9 @@ class IdeaManager {
                     const idea1 = this.mergeIdeas[0];
                     const idea2 = this.mergeIdeas[1];
                     
+                    idea1.element.classList.add('generating');
+                    idea2.element.classList.add('generating');
+
                     try {
                         const response = await fetch('/generate-ideas', {
                             method: 'POST',
@@ -407,7 +409,11 @@ class IdeaManager {
                             this.connectIdeas(idea1, newIdea);
                             this.connectIdeas(idea2, newIdea);
                         }
+                    } catch (error) {
+                        console.error('Error merging ideas:', error);
                     } finally {
+                        idea1.element.classList.remove('generating');
+                        idea2.element.classList.remove('generating');
                         this.mergeIdeas.forEach(idea => idea.element.classList.remove('merge-mode'));
                         this.mergeIdeas = [];
                     }
