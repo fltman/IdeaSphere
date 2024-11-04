@@ -124,6 +124,9 @@ class IdeaManager {
 
     async handleGenerateClick(ideaBall, text) {
         try {
+            // Add generating class to start animation
+            ideaBall.classList.add('generating');
+            
             console.log('Sending request to generate ideas for:', text);
             const response = await fetch('/generate-ideas', {
                 method: 'POST',
@@ -135,6 +138,9 @@ class IdeaManager {
 
             const data = await response.json();
             console.log('Received response:', data);
+            
+            // Remove generating class when done
+            ideaBall.classList.remove('generating');
             
             if (data.success) {
                 const relatedIdeas = JSON.parse(data.data).ideas;
@@ -160,6 +166,8 @@ class IdeaManager {
                 this.centerOnPoint(parseInt(ideaBall.style.left), parseInt(ideaBall.style.top));
             }
         } catch (error) {
+            // Remove generating class on error too
+            ideaBall.classList.remove('generating');
             console.error('Error generating ideas:', error);
         }
     }
