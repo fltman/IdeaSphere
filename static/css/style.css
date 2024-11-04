@@ -6,7 +6,6 @@
 body {
     margin: 0;
     padding: 0;
-    overflow: hidden;
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -23,7 +22,8 @@ header {
     height: calc(100vh - var(--header-height) - var(--controls-height));
     overflow: auto;
     background: var(--bs-body-bg);
-    min-height: 500px;
+    min-width: 3000px;
+    min-height: 3000px;
 }
 
 .idea-ball {
@@ -42,6 +42,11 @@ header {
     user-select: none;
     font-size: 14px;
     line-height: 1.2;
+}
+
+.idea-ball.selected {
+    box-shadow: 0 0 0 4px #ffc107;
+    transform: scale(1.1);
 }
 
 .idea-ball.main {

@@ -6,6 +6,8 @@ class IdeaManager {
         this.isDragging = false;
         this.dragStartPos = { x: 0, y: 0 };
         this.selectedIdea = null;
+        this.isSelectMode = false;
+        this.selectedIdeas = [];
         this.setupEventListeners();
     }
 
@@ -47,18 +49,20 @@ class IdeaManager {
         ideaBall.setAttribute('draggable', 'true');
         
         ideaBall.addEventListener('dragstart', (e) => {
-            this.isDragging = true;
-            this.selectedIdea = ideaBall;
-            const rect = ideaBall.getBoundingClientRect();
-            this.dragStartPos = {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
-            e.dataTransfer.setDragImage(ideaBall, this.dragStartPos.x, this.dragStartPos.y);
+            if (!this.isSelectMode) {
+                this.isDragging = true;
+                this.selectedIdea = ideaBall;
+                const rect = ideaBall.getBoundingClientRect();
+                this.dragStartPos = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+                e.dataTransfer.setDragImage(ideaBall, this.dragStartPos.x, this.dragStartPos.y);
+            }
         });
 
         ideaBall.addEventListener('drag', (e) => {
-            if (e.clientX === 0 && e.clientY === 0) return;
+            if (this.isSelectMode || e.clientX === 0 && e.clientY === 0) return;
             
             const rect = this.workspace.getBoundingClientRect();
             const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
@@ -78,13 +82,82 @@ class IdeaManager {
 
         // Show full text on click
         ideaBall.addEventListener('click', (e) => {
-            if (e.target !== generateBtn) {
+            if (e.target === generateBtn) {
+                e.stopPropagation();
+                this.handleGenerateClick(ideaBall, text);
+            } else if (this.isSelectMode) {
+                e.stopPropagation();
+                this.handleIdeaSelection(ideaBall);
+            } else {
                 e.stopPropagation();
                 this.showTooltip(ideaBall, text);
             }
         });
 
         return ideaBall;
+    }
+
+    handleIdeaSelection(ideaBall) {
+        const ideaIndex = this.selectedIdeas.findIndex(idea => idea.element === ideaBall);
+        if (ideaIndex === -1) {
+            if (this.selectedIdeas.length < 2) {
+                ideaBall.classList.add('selected');
+                const idea = this.ideas.find(i => i.element === ideaBall);
+                this.selectedIdeas.push(idea);
+            }
+        } else {
+            ideaBall.classList.remove('selected');
+            this.selectedIdeas.splice(ideaIndex, 1);
+        }
+    }
+
+    async handleGenerateClick(ideaBall, text) {
+        try {
+            console.log('Sending request to generate ideas for:', text);
+            const response = await fetch('/generate-ideas', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ idea: text })
+            });
+
+            const data = await response.json();
+            console.log('Received response:', data);
+            
+            if (data.success) {
+                const relatedIdeas = JSON.parse(data.data).ideas;
+                const radius = 200;
+                const angleStep = (2 * Math.PI) / relatedIdeas.length;
+
+                relatedIdeas.forEach((newIdea, index) => {
+                    const angle = index * angleStep;
+                    const newX = parseInt(ideaBall.style.left) + radius * Math.cos(angle);
+                    const newY = parseInt(ideaBall.style.top) + radius * Math.sin(angle);
+                    
+                    console.log('Creating related idea:', { text: newIdea.text, x: newX, y: newY });
+                    const subIdea = this.addIdea(newX, newY, newIdea.text, true);
+                    this.connectIdeas(this.ideas.find(i => i.element === ideaBall), subIdea);
+                });
+
+                this.centerOnPoint(parseInt(ideaBall.style.left), parseInt(ideaBall.style.top));
+            }
+        } catch (error) {
+            console.error('Error generating ideas:', error);
+        }
+    }
+
+    enterSelectMode() {
+        this.isSelectMode = true;
+        this.selectedIdeas = [];
+        this.workspace.style.cursor = 'pointer';
+    }
+
+    exitSelectMode() {
+        this.isSelectMode = false;
+        this.selectedIdeas.forEach(idea => idea.element.classList.remove('selected'));
+        this.selectedIdeas = [];
+        this.workspace.style.cursor = 'default';
     }
 
     createConnectionLine(from, to) {
@@ -124,46 +197,6 @@ class IdeaManager {
         this.workspace.appendChild(ideaBall);
         const idea = { element: ideaBall, text, isAIGenerated };
         this.ideas.push(idea);
-        
-        // Add click handler for the generate button
-        const generateBtn = ideaBall.querySelector('.generate-btn');
-        generateBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            try {
-                console.log('Sending request to generate ideas for:', text);
-                const response = await fetch('/generate-ideas', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ idea: text })
-                });
-
-                const data = await response.json();
-                console.log('Received response:', data);
-                
-                if (data.success) {
-                    const relatedIdeas = JSON.parse(data.data).ideas;
-                    const radius = 200;
-                    const angleStep = (2 * Math.PI) / relatedIdeas.length;
-
-                    relatedIdeas.forEach((newIdea, index) => {
-                        const angle = index * angleStep;
-                        const newX = parseInt(ideaBall.style.left) + radius * Math.cos(angle);
-                        const newY = parseInt(ideaBall.style.top) + radius * Math.sin(angle);
-                        
-                        console.log('Creating related idea:', { text: newIdea.text, x: newX, y: newY });
-                        const subIdea = this.addIdea(newX, newY, newIdea.text, true);
-                        this.connectIdeas(idea, subIdea);
-                    });
-
-                    this.centerOnPoint(parseInt(ideaBall.style.left), parseInt(ideaBall.style.top));
-                }
-            } catch (error) {
-                console.error('Error generating ideas:', error);
-            }
-        });
-        
         this.centerOnPoint(x, y);
         return idea;
     }
@@ -175,7 +208,7 @@ class IdeaManager {
     }
 
     handleWorkspaceClick(x, y) {
-        if (!this.isDragging) {
+        if (!this.isDragging && !this.isSelectMode) {
             console.log('Dispatching workspace-click event:', { x, y });
             const event = new CustomEvent('workspace-click', {
                 detail: { x, y }
@@ -214,5 +247,6 @@ class IdeaManager {
         this.workspace.innerHTML = '';
         this.ideas = [];
         this.connections = [];
+        this.exitSelectMode();
     }
 }
