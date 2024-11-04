@@ -29,7 +29,8 @@ class IdeaManager {
     createIdeaBall(x, y, text, isAIGenerated = false) {
         const ideaBall = document.createElement('div');
         ideaBall.className = `idea-ball ${isAIGenerated ? 'ai' : 'main'}`;
-        ideaBall.textContent = text;
+        const shortText = text.length > 15 ? text.substring(0, 15) + '...' : text;
+        ideaBall.textContent = shortText;
         ideaBall.style.left = `${x}px`;
         ideaBall.style.top = `${y}px`;
         
@@ -123,6 +124,46 @@ class IdeaManager {
         this.workspace.appendChild(ideaBall);
         const idea = { element: ideaBall, text, isAIGenerated };
         this.ideas.push(idea);
+        
+        // Add click handler for the generate button
+        const generateBtn = ideaBall.querySelector('.generate-btn');
+        generateBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+                console.log('Sending request to generate ideas for:', text);
+                const response = await fetch('/generate-ideas', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ idea: text })
+                });
+
+                const data = await response.json();
+                console.log('Received response:', data);
+                
+                if (data.success) {
+                    const relatedIdeas = JSON.parse(data.data).ideas;
+                    const radius = 200;
+                    const angleStep = (2 * Math.PI) / relatedIdeas.length;
+
+                    relatedIdeas.forEach((newIdea, index) => {
+                        const angle = index * angleStep;
+                        const newX = parseInt(ideaBall.style.left) + radius * Math.cos(angle);
+                        const newY = parseInt(ideaBall.style.top) + radius * Math.sin(angle);
+                        
+                        console.log('Creating related idea:', { text: newIdea.text, x: newX, y: newY });
+                        const subIdea = this.addIdea(newX, newY, newIdea.text, true);
+                        this.connectIdeas(idea, subIdea);
+                    });
+
+                    this.centerOnPoint(parseInt(ideaBall.style.left), parseInt(ideaBall.style.top));
+                }
+            } catch (error) {
+                console.error('Error generating ideas:', error);
+            }
+        });
+        
         this.centerOnPoint(x, y);
         return idea;
     }
