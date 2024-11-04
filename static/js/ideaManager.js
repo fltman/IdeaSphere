@@ -13,7 +13,92 @@ class IdeaManager {
         this.mergeIdeas = [];
         this.generatedIdeas = [];
         this.maxHistoryItems = 10;
+        this.timer = null;
+        this.timerDuration = 5 * 60 * 1000;
+        this.remainingTime = this.timerDuration;
+        this.isTimerPaused = false;
         this.setupEventListeners();
+    }
+
+    startTimer() {
+        if (this.timer) return;
+        
+        const startTime = Date.now() - (this.timerDuration - this.remainingTime);
+        this.timer = setInterval(() => {
+            if (!this.isTimerPaused) {
+                const elapsedTime = Date.now() - startTime;
+                this.remainingTime = Math.max(0, this.timerDuration - elapsedTime);
+                
+                if (this.remainingTime === 0) {
+                    this.handleTimerExpired();
+                }
+            }
+        }, 1000);
+    }
+
+    pauseTimer() {
+        this.isTimerPaused = true;
+    }
+
+    resumeTimer() {
+        this.isTimerPaused = false;
+    }
+
+    stopTimer() {
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+        }
+    }
+
+    async handleTimerExpired() {
+        this.stopTimer();
+        
+        if (this.ideas.length >= 2) {
+            const shuffled = [...this.ideas].sort(() => 0.5 - Math.random());
+            const [idea1, idea2] = shuffled.slice(0, 2);
+            
+            idea1.element.classList.add('generating');
+            idea2.element.classList.add('generating');
+            
+            try {
+                const response = await fetch('/generate-ideas', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        idea: `Combine these two ideas: 1. ${idea1.text} 2. ${idea2.text}`
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    const combinedIdeas = JSON.parse(data.data).ideas;
+                    const x1 = parseInt(idea1.element.style.left);
+                    const y1 = parseInt(idea1.element.style.top);
+                    const x2 = parseInt(idea2.element.style.left);
+                    const y2 = parseInt(idea2.element.style.top);
+                    const midX = (x1 + x2) / 2;
+                    const midY = (y1 + y2) / 2;
+                    
+                    const newIdea = this.addIdea(midX, midY, combinedIdeas[0].text);
+                    this.connectIdeas(idea1, newIdea);
+                    this.connectIdeas(idea2, newIdea);
+                }
+            } finally {
+                idea1.element.classList.remove('generating');
+                idea2.element.classList.remove('generating');
+            }
+        }
+        
+        this.remainingTime = this.timerDuration;
+        this.startTimer();
+    }
+
+    setTimerDuration(minutes) {
+        this.timerDuration = minutes * 60 * 1000;
+        this.remainingTime = this.timerDuration;
     }
 
     addToHistory(text, isGenerated = true) {
@@ -225,7 +310,6 @@ class IdeaManager {
         try {
             ideaBall.classList.add('generating');
             
-            console.log('Sending request to generate ideas for:', text);
             const response = await fetch('/generate-ideas', {
                 method: 'POST',
                 headers: {
@@ -235,7 +319,6 @@ class IdeaManager {
             });
 
             const data = await response.json();
-            console.log('Received response:', data);
             
             ideaBall.classList.remove('generating');
             
@@ -255,7 +338,6 @@ class IdeaManager {
                         this.workspace.clientHeight - 120
                     ));
                     
-                    console.log('Creating related idea:', { text: newIdea.text, x: newX, y: newY });
                     const subIdea = this.addIdea(newX, newY, newIdea.text, true);
                     this.connectIdeas(this.ideas.find(i => i.element === ideaBall), subIdea);
                     this.addToHistory(newIdea.text);
@@ -335,7 +417,6 @@ class IdeaManager {
 
     handleWorkspaceClick(x, y) {
         if (!this.isDragging && !this.isSelectMode) {
-            console.log('Dispatching workspace-click event:', { x, y });
             const event = new CustomEvent('workspace-click', {
                 detail: { x, y }
             });
@@ -380,5 +461,6 @@ class IdeaManager {
         this.exitSelectMode();
         this.generatedIdeas = [];
         this.updateHistoryList();
+        this.stopTimer();
     }
 }

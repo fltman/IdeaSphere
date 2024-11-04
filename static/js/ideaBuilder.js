@@ -4,6 +4,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const ideaModal = new bootstrap.Modal(document.getElementById('ideaModal'));
     const clearCanvasBtn = document.getElementById('clearCanvas');
     const combineIdeasBtn = document.getElementById('combineIdeasBtn');
+    const startTimerBtn = document.getElementById('startTimer');
+    const pauseTimerBtn = document.getElementById('pauseTimer');
+    const timerInput = document.getElementById('timerInput');
     let pendingIdeaPosition = null;
 
     document.addEventListener('workspace-click', function(e) {
@@ -23,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 pendingIdeaPosition.y,
                 ideaText
             );
-            // Add manually created idea to history
             ideaManager.addToHistory(ideaText, true);
             console.log('New idea created:', newIdea);
             
@@ -46,7 +48,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const idea1 = ideaManager.selectedIdeas[0];
                 const idea2 = ideaManager.selectedIdeas[1];
                 
-                // Send both ideas to AI for combination
                 fetch('/generate-ideas', {
                     method: 'POST',
                     headers: {
@@ -60,7 +61,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     if (data.success) {
                         const combinedIdeas = JSON.parse(data.data).ideas;
-                        // Create new idea at midpoint
                         const x1 = parseInt(idea1.element.style.left);
                         const y1 = parseInt(idea1.element.style.top);
                         const x2 = parseInt(idea2.element.style.left);
@@ -68,7 +68,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         const midX = (x1 + x2) / 2;
                         const midY = (y1 + y2) / 2;
                         
-                        // Create the combined idea
                         const newIdea = ideaManager.addIdea(midX, midY, combinedIdeas[0].text);
                         ideaManager.connectIdeas(idea1, newIdea);
                         ideaManager.connectIdeas(idea2, newIdea);
@@ -85,5 +84,45 @@ document.addEventListener('DOMContentLoaded', function() {
             combineIdeasBtn.classList.remove('btn-outline-primary');
             combineIdeasBtn.classList.add('btn-secondary');
         }
+    });
+
+    startTimerBtn.addEventListener('click', function() {
+        if (ideaManager.timer) {
+            ideaManager.stopTimer();
+            startTimerBtn.textContent = 'Start Timer';
+            startTimerBtn.classList.remove('btn-success');
+            startTimerBtn.classList.add('btn-outline-success');
+            pauseTimerBtn.disabled = true;
+        } else {
+            const minutes = parseInt(timerInput.value);
+            if (minutes > 0) {
+                ideaManager.setTimerDuration(minutes);
+                ideaManager.startTimer();
+                startTimerBtn.textContent = 'Stop Timer';
+                startTimerBtn.classList.remove('btn-outline-success');
+                startTimerBtn.classList.add('btn-success');
+                pauseTimerBtn.disabled = false;
+            }
+        }
+    });
+
+    pauseTimerBtn.addEventListener('click', function() {
+        if (ideaManager.isTimerPaused) {
+            ideaManager.resumeTimer();
+            pauseTimerBtn.textContent = 'Pause';
+            pauseTimerBtn.classList.remove('btn-warning');
+            pauseTimerBtn.classList.add('btn-outline-warning');
+        } else {
+            ideaManager.pauseTimer();
+            pauseTimerBtn.textContent = 'Resume';
+            pauseTimerBtn.classList.remove('btn-outline-warning');
+            pauseTimerBtn.classList.add('btn-warning');
+        }
+    });
+
+    timerInput.addEventListener('change', function() {
+        const value = parseInt(this.value);
+        if (value < 1) this.value = 1;
+        if (value > 60) this.value = 60;
     });
 });
