@@ -7,6 +7,7 @@ class CanvasManager {
         this.isDragging = false;
         this.connections = [];
         this.tooltip = this.createTooltip();
+        this.isPermanentTooltip = false;
         console.log('CanvasManager initialized');
         this.setupCanvas();
         this.setupEventListeners();
@@ -46,7 +47,6 @@ class CanvasManager {
         this.canvas.width = Math.max(window.innerWidth * 2, 3000);
         this.canvas.height = Math.max(availableHeight * 2, 3000);
         
-        // Center the viewport initially
         const center = this.getViewportCenter();
         container.scrollLeft = (this.canvas.width - container.clientWidth) / 2;
         container.scrollTop = (this.canvas.height - container.clientHeight) / 2;
@@ -65,18 +65,46 @@ class CanvasManager {
             this.render();
         });
         
-        this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        this.canvas.addEventListener('mousemove', (e) => {
-            this.handleMouseMove(e);
-            this.updateTooltip(e);
+        // Handle mouse events
+        this.canvas.addEventListener('mousedown', (e) => {
+            this.handleMouseDown(e);
         });
-        this.canvas.addEventListener('mouseup', () => this.handleMouseUp());
-        this.canvas.addEventListener('click', (e) => this.handleClick(e));
-        this.canvas.addEventListener('mouseleave', () => this.hideTooltip());
+        
+        this.canvas.addEventListener('mousemove', (e) => {
+            if (this.isDragging) {
+                this.handleMouseMove(e);
+            } else if (!this.isPermanentTooltip) {
+                this.updateTooltip(e);
+            }
+        });
+        
+        this.canvas.addEventListener('mouseup', (e) => {
+            this.handleMouseUp(e);
+        });
+        
+        this.canvas.addEventListener('click', (e) => {
+            this.handleClick(e);
+        });
+        
+        // Hide tooltip when mouse leaves canvas
+        this.canvas.addEventListener('mouseleave', () => {
+            if (!this.isPermanentTooltip) {
+                this.hideTooltip();
+            }
+        });
+
+        // Handle clicks outside canvas to hide permanent tooltip
+        document.addEventListener('click', (e) => {
+            if (!this.canvas.contains(e.target) && this.isPermanentTooltip) {
+                this.isPermanentTooltip = false;
+                this.hideTooltip();
+            }
+        });
+        
         console.log('Event listeners setup complete');
     }
 
-    updateTooltip(e) {
+    updateTooltip(e, forceShow = false) {
         const rect = this.canvas.getBoundingClientRect();
         const container = this.canvas.parentElement;
         const x = e.clientX - rect.left + container.scrollLeft;
@@ -86,15 +114,36 @@ class CanvasManager {
         if (idea) {
             this.tooltip.textContent = idea.text;
             this.tooltip.style.display = 'block';
-            this.tooltip.style.left = (e.clientX + 10) + 'px';
-            this.tooltip.style.top = (e.clientY + 10) + 'px';
-        } else {
+            
+            // Position tooltip relative to viewport
+            const tooltipX = e.clientX + 10;
+            const tooltipY = e.clientY + 10;
+            
+            // Adjust position if tooltip would go off screen
+            const tooltipRect = this.tooltip.getBoundingClientRect();
+            if (tooltipX + tooltipRect.width > window.innerWidth) {
+                this.tooltip.style.left = (e.clientX - tooltipRect.width - 10) + 'px';
+            } else {
+                this.tooltip.style.left = tooltipX + 'px';
+            }
+            
+            if (tooltipY + tooltipRect.height > window.innerHeight) {
+                this.tooltip.style.top = (e.clientY - tooltipRect.height - 10) + 'px';
+            } else {
+                this.tooltip.style.top = tooltipY + 'px';
+            }
+
+            if (forceShow) {
+                this.isPermanentTooltip = true;
+            }
+        } else if (!this.isPermanentTooltip) {
             this.hideTooltip();
         }
     }
 
     hideTooltip() {
         this.tooltip.style.display = 'none';
+        this.isPermanentTooltip = false;
     }
 
     drawIdea(idea) {
@@ -153,6 +202,7 @@ class CanvasManager {
             const dx = idea.x - x;
             const dy = idea.y - y;
             const distance = Math.sqrt(dx * dx + dy * dy);
+            console.log('Checking idea distance:', { idea, distance, clickRadius });
             return distance <= clickRadius;
         });
     }
@@ -163,25 +213,39 @@ class CanvasManager {
         const x = e.clientX - rect.left + container.scrollLeft;
         const y = e.clientY - rect.top + container.scrollTop;
 
+        console.log('Mouse down at:', { x, y, clientX: e.clientX, clientY: e.clientY });
         const clickedIdea = this.getIdeaAtPosition(x, y);
+        
         if (clickedIdea) {
-            console.log('Selected idea for dragging:', clickedIdea);
+            console.log('Starting drag operation:', clickedIdea);
             this.selectedIdea = clickedIdea;
             this.isDragging = true;
+            // Prevent showing new idea modal
+            e.stopPropagation();
         }
     }
 
     handleMouseMove(e) {
-        if (!this.isDragging || !this.selectedIdea) return;
+        if (!this.isDragging || !this.selectedIdea) {
+            return;
+        }
 
         const rect = this.canvas.getBoundingClientRect();
         const container = this.canvas.parentElement;
-        this.selectedIdea.x = e.clientX - rect.left + container.scrollLeft;
-        this.selectedIdea.y = e.clientY - rect.top + container.scrollTop;
+        const newX = e.clientX - rect.left + container.scrollLeft;
+        const newY = e.clientY - rect.top + container.scrollTop;
+        
+        console.log('Dragging idea:', {
+            from: { x: this.selectedIdea.x, y: this.selectedIdea.y },
+            to: { x: newX, y: newY }
+        });
+        
+        this.selectedIdea.x = newX;
+        this.selectedIdea.y = newY;
         this.render();
     }
 
-    handleMouseUp() {
+    handleMouseUp(e) {
         if (this.isDragging && this.selectedIdea) {
             console.log('Finished dragging idea:', this.selectedIdea);
             this.centerOnPoint(this.selectedIdea.x, this.selectedIdea.y);
@@ -215,19 +279,17 @@ class CanvasManager {
         const clickedIdea = this.getIdeaAtPosition(x, y);
         console.log('Canvas clicked:', { x, y, clickedIdea });
         
-        // Only dispatch event for creating new idea if:
-        // 1. No idea was clicked
-        // 2. Not currently dragging
-        // 3. Click was on empty space
-        if (!clickedIdea && !this.isDragging) {
+        if (clickedIdea) {
+            // Show permanent tooltip for clicked idea
+            console.log('Showing permanent tooltip for idea:', clickedIdea);
+            this.updateTooltip(e, true);
+        } else if (!this.isDragging) {
+            // Only dispatch event for creating new idea if not dragging
             console.log('Dispatching canvas-click event for new idea:', { x, y });
             const event = new CustomEvent('canvas-click', {
                 detail: { x, y }
             });
             document.dispatchEvent(event);
-        } else if (clickedIdea) {
-            // Show tooltip for clicked idea
-            this.updateTooltip(e);
         }
     }
 }
