@@ -20,6 +20,23 @@ class CanvasManager {
         return tooltip;
     }
 
+    getViewportCenter() {
+        const container = this.canvas.parentElement;
+        return {
+            x: container.scrollLeft + container.clientWidth / 2,
+            y: container.scrollTop + container.clientHeight / 2
+        };
+    }
+
+    centerOnPoint(x, y) {
+        const container = this.canvas.parentElement;
+        container.scrollTo({
+            left: x - container.clientWidth / 2,
+            top: y - container.clientHeight / 2,
+            behavior: 'smooth'
+        });
+    }
+
     setupCanvas() {
         const container = this.canvas.parentElement;
         const headerHeight = document.querySelector('header').offsetHeight;
@@ -29,8 +46,11 @@ class CanvasManager {
         this.canvas.width = Math.max(window.innerWidth * 2, 3000);
         this.canvas.height = Math.max(availableHeight * 2, 3000);
         
+        // Center the viewport initially
+        const center = this.getViewportCenter();
         container.scrollLeft = (this.canvas.width - container.clientWidth) / 2;
         container.scrollTop = (this.canvas.height - container.clientHeight) / 2;
+        
         console.log('Canvas setup complete:', {
             width: this.canvas.width,
             height: this.canvas.height,
@@ -78,13 +98,17 @@ class CanvasManager {
     drawIdea(idea) {
         console.log('Drawing idea:', idea);
         this.ctx.beginPath();
-        this.ctx.arc(idea.x, idea.y, 40, 0, Math.PI * 2);
-        this.ctx.fillStyle = idea.isAIGenerated ? '#4a5' : '#458';
+        this.ctx.arc(idea.x, idea.y, 60, 0, Math.PI * 2);
+        this.ctx.fillStyle = idea.isAIGenerated ? '#98FB98' : '#6495ED';
         this.ctx.fill();
+        this.ctx.strokeStyle = '#fff';
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
         
         this.ctx.fillStyle = '#fff';
-        this.ctx.font = '14px Arial';
+        this.ctx.font = '18px Arial';
         this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
         const shortText = idea.text.length > 20 ? idea.text.substring(0, 17) + '...' : idea.text;
         this.ctx.fillText(shortText, idea.x, idea.y);
     }
@@ -112,6 +136,7 @@ class CanvasManager {
         const idea = { x, y, text, isAIGenerated };
         this.ideas.push(idea);
         console.log('Added new idea:', idea);
+        this.centerOnPoint(x, y);
         return idea;
     }
 
@@ -124,7 +149,7 @@ class CanvasManager {
         return this.ideas.find(idea => {
             const dx = idea.x - x;
             const dy = idea.y - y;
-            return Math.sqrt(dx * dx + dy * dy) < 40;
+            return Math.sqrt(dx * dx + dy * dy) < 60;
         });
     }
 
@@ -153,6 +178,7 @@ class CanvasManager {
     handleMouseUp() {
         if (this.isDragging) {
             console.log('Finished dragging idea:', this.selectedIdea);
+            this.centerOnPoint(this.selectedIdea.x, this.selectedIdea.y);
         }
         this.isDragging = false;
         this.selectedIdea = null;
@@ -160,8 +186,25 @@ class CanvasManager {
 
     handleClick(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left + this.canvas.parentElement.scrollLeft;
-        const y = e.clientY - rect.top + this.canvas.parentElement.scrollTop;
+        const container = this.canvas.parentElement;
+        const viewportCenter = this.getViewportCenter();
+        
+        // Calculate coordinates relative to viewport
+        const x = Math.min(
+            Math.max(
+                e.clientX - rect.left + container.scrollLeft,
+                viewportCenter.x - 500
+            ),
+            viewportCenter.x + 500
+        );
+        
+        const y = Math.min(
+            Math.max(
+                e.clientY - rect.top + container.scrollTop,
+                viewportCenter.y - 500
+            ),
+            viewportCenter.y + 500
+        );
         
         const clickedIdea = this.getIdeaAtPosition(x, y);
         console.log('Canvas clicked:', { x, y, clickedIdea });

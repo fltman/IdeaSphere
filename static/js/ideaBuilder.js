@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (data.success) {
                 const relatedIdeas = JSON.parse(data.data).ideas;
-                const radius = 150;
+                const radius = 200; // Increased radius for better spacing
                 const angleStep = (2 * Math.PI) / relatedIdeas.length;
 
                 relatedIdeas.forEach((idea, index) => {
@@ -73,6 +73,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 canvasManager.render();
                 generateIdeasBtn.disabled = true;
+                // Center the view on the main idea after generating related ideas
+                canvasManager.centerOnPoint(mainIdea.x, mainIdea.y);
             }
         } catch (error) {
             console.error('Error generating ideas:', error);
