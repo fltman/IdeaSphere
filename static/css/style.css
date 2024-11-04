@@ -118,12 +118,26 @@ header {
     justify-content: center;
     cursor: move;
     text-align: center;
-    padding: 10px;
+    padding: 15px;
     color: white;
     transition: transform 0.2s;
     user-select: none;
     font-size: 14px;
     line-height: 1.2;
+    overflow: hidden;
+}
+
+.idea-ball-text {
+    max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    word-wrap: break-word;
+    margin: 0;
+    padding: 0;
 }
 
 .idea-ball.selected {

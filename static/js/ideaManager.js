@@ -171,7 +171,12 @@ class IdeaManager {
         ideaBall.className = `idea-ball ${isAIGenerated ? 'ai' : 'main'}`;
         ideaBall.style.left = `${x}px`;
         ideaBall.style.top = `${y}px`;
-        ideaBall.textContent = text;
+        
+        const textContainer = document.createElement('p');
+        textContainer.className = 'idea-ball-text';
+        textContainer.textContent = text;
+        ideaBall.appendChild(textContainer);
+        
         ideaBall.draggable = true;
 
         const generateBtn = document.createElement('button');
@@ -355,21 +360,18 @@ class IdeaManager {
     }
 
     showTooltip(ideaBall, text) {
-        // If there's already a tooltip for this idea ball, toggle it off
         const existingTooltip = ideaBall.querySelector('.idea-tooltip');
         if (existingTooltip) {
             existingTooltip.remove();
             return;
         }
         
-        // Remove any other tooltips
         document.querySelectorAll('.idea-tooltip').forEach(tooltip => tooltip.remove());
         
-        // Create new tooltip
         const tooltip = document.createElement('div');
         tooltip.className = 'idea-tooltip';
         tooltip.textContent = text;
-        tooltip.style.left = '130px';  // Position to the right of the idea ball
+        tooltip.style.left = '130px';
         tooltip.style.top = '50%';
         tooltip.style.transform = 'translateY(-50%)';
         ideaBall.appendChild(tooltip);
@@ -380,12 +382,10 @@ class IdeaManager {
         const ideaIndex = this.mergeIdeas.indexOf(idea);
         
         if (ideaIndex === -1) {
-            // Only allow selection if we haven't reached 2 ideas yet
             if (this.mergeIdeas.length < 2) {
                 ideaBall.classList.add('merge-mode');
                 this.mergeIdeas.push(idea);
                 
-                // If this is the second idea, immediately generate the combined idea
                 if (this.mergeIdeas.length === 2) {
                     const idea1 = this.mergeIdeas[0];
                     const idea2 = this.mergeIdeas[1];
@@ -416,14 +416,12 @@ class IdeaManager {
                             this.connectIdeas(idea2, newIdea);
                         }
                     } finally {
-                        // Clear merge mode
                         this.mergeIdeas.forEach(idea => idea.element.classList.remove('merge-mode'));
                         this.mergeIdeas = [];
                     }
                 }
             }
         } else {
-            // Allow deselection
             ideaBall.classList.remove('merge-mode');
             this.mergeIdeas.splice(ideaIndex, 1);
         }
