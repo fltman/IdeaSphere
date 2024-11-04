@@ -48,8 +48,6 @@ header {
     border-bottom: 1px solid var(--bs-secondary);
     font-size: 0.9rem;
     opacity: 0.8;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
 }
 
 #ideas-list li:hover {
@@ -111,7 +109,7 @@ header {
 }
 
 .idea-ball {
-    position: relative;  /* For absolute positioning of children */
+    position: absolute;
     width: 120px;
     height: 120px;
     border-radius: 50%;
@@ -120,19 +118,12 @@ header {
     justify-content: center;
     cursor: move;
     text-align: center;
-    padding: 20px;
+    padding: 10px;
     color: white;
     transition: transform 0.2s;
     user-select: none;
     font-size: 14px;
-    line-height: 1.3;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
+    line-height: 1.2;
 }
 
 .idea-ball.selected {
@@ -184,15 +175,12 @@ header {
     font-size: 14px;
     line-height: 1.4;
     word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: pre-wrap;
 }
 
 .info-btn,
 .generate-btn,
 .merge-btn {
-    position: absolute;
-    z-index: 10;
+    z-index: 1;
     width: 24px;
     height: 24px;
     padding: 0;
@@ -201,26 +189,20 @@ header {
     justify-content: center;
     border-radius: 50%;
     font-size: 14px;
-    border: 2px solid var(--bs-body-bg);
+    line-height: 1;
 }
 
 .generate-btn {
-    right: -10px;
-    top: -10px;
     background-color: var(--bs-success);
     color: white;
 }
 
 .info-btn {
-    left: -10px;
-    top: -10px;
     background-color: var(--bs-info);
     color: white;
 }
 
 .merge-btn {
-    right: -10px;
-    bottom: -10px;
     background-color: var(--bs-warning);
     color: var(--bs-dark);
 }
