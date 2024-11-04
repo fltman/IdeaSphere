@@ -148,6 +148,10 @@ class IdeaManager {
         generateBtn.style.position = 'absolute';
         generateBtn.style.right = '-10px';
         generateBtn.style.top = '-10px';
+        generateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.handleGenerateClick(ideaBall, text);
+        });
         ideaBall.appendChild(generateBtn);
 
         // Add info button
@@ -157,6 +161,10 @@ class IdeaManager {
         infoBtn.style.position = 'absolute';
         infoBtn.style.left = '-10px';
         infoBtn.style.top = '-10px';
+        infoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showTooltip(ideaBall, text);
+        });
         ideaBall.appendChild(infoBtn);
 
         // Add merge button
@@ -166,6 +174,10 @@ class IdeaManager {
         mergeBtn.style.position = 'absolute';
         mergeBtn.style.right = '-10px';
         mergeBtn.style.bottom = '-10px';
+        mergeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.handleMergeMode(ideaBall);
+        });
         ideaBall.appendChild(mergeBtn);
 
         this.setupDragListeners(ideaBall);
@@ -175,6 +187,42 @@ class IdeaManager {
         this.ideas.push(idea);
         this.addToHistory(text, true);
         return idea;
+    }
+
+    async handleGenerateClick(ideaBall, text) {
+        try {
+            ideaBall.classList.add('generating');
+            
+            const response = await fetch('/generate-ideas', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ idea: text })
+            });
+
+            const data = await response.json();
+            ideaBall.classList.remove('generating');
+            
+            if (data.success) {
+                const relatedIdeas = JSON.parse(data.data).ideas;
+                const rect = ideaBall.getBoundingClientRect();
+                const radius = 150;
+                
+                const idea = this.ideas.find(i => i.element === ideaBall);
+                relatedIdeas.forEach((relatedIdea, index) => {
+                    const angle = (2 * Math.PI * index) / relatedIdeas.length;
+                    const x = parseInt(ideaBall.style.left) + radius * Math.cos(angle);
+                    const y = parseInt(ideaBall.style.top) + radius * Math.sin(angle);
+                    
+                    const newIdea = this.addIdea(x, y, relatedIdea.text, true);
+                    this.connectIdeas(idea, newIdea);
+                });
+            }
+        } catch (error) {
+            console.error('Error generating ideas:', error);
+            ideaBall.classList.remove('generating');
+        }
     }
 
     setupDragListeners(ideaBall) {
@@ -272,5 +320,15 @@ class IdeaManager {
             ideaBall.classList.remove('selected');
             this.selectedIdeas.splice(index, 1);
         }
+    }
+
+    showTooltip(ideaBall, text) {
+        // Implementation for showing tooltip
+        console.log('Showing tooltip for:', text);
+    }
+
+    handleMergeMode(ideaBall) {
+        // Implementation for merge mode
+        console.log('Handling merge mode for idea ball');
     }
 }
