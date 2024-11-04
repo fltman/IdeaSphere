@@ -172,19 +172,17 @@ class IdeaManager {
         ideaBall.style.left = `${x}px`;
         ideaBall.style.top = `${y}px`;
         
-        const textContainer = document.createElement('p');
-        textContainer.className = 'idea-ball-text';
-        textContainer.textContent = text;
+        // Create inner container for text
+        const textContainer = document.createElement('div');
+        textContainer.className = 'idea-ball-inner';
+        textContainer.innerHTML = `<p class='idea-ball-text'>${text}</p>`;
         ideaBall.appendChild(textContainer);
         
         ideaBall.draggable = true;
 
         const generateBtn = document.createElement('button');
-        generateBtn.className = 'btn btn-sm btn-success generate-btn';
+        generateBtn.className = 'btn btn-sm generate-btn';
         generateBtn.innerHTML = '+';
-        generateBtn.style.position = 'absolute';
-        generateBtn.style.right = '-10px';
-        generateBtn.style.top = '-10px';
         generateBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.handleGenerateClick(ideaBall, text);
@@ -192,11 +190,8 @@ class IdeaManager {
         ideaBall.appendChild(generateBtn);
 
         const infoBtn = document.createElement('button');
-        infoBtn.className = 'btn btn-sm btn-info info-btn';
+        infoBtn.className = 'btn btn-sm info-btn';
         infoBtn.innerHTML = 'i';
-        infoBtn.style.position = 'absolute';
-        infoBtn.style.left = '-10px';
-        infoBtn.style.top = '-10px';
         infoBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.showTooltip(ideaBall, text);
@@ -204,11 +199,8 @@ class IdeaManager {
         ideaBall.appendChild(infoBtn);
 
         const mergeBtn = document.createElement('button');
-        mergeBtn.className = 'btn btn-sm btn-warning merge-btn';
+        mergeBtn.className = 'btn btn-sm merge-btn';
         mergeBtn.innerHTML = '⚡';
-        mergeBtn.style.position = 'absolute';
-        mergeBtn.style.right = '-10px';
-        mergeBtn.style.bottom = '-10px';
         mergeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.handleMergeMode(ideaBall);

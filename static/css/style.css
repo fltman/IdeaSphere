@@ -113,15 +113,21 @@ header {
     width: 120px;
     height: 120px;
     border-radius: 50%;
+    cursor: move;
+    transition: transform 0.2s;
+    user-select: none;
+}
+
+.idea-ball-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: move;
     text-align: center;
     padding: 15px;
     color: white;
-    transition: transform 0.2s;
-    user-select: none;
     font-size: 14px;
     line-height: 1.2;
     overflow: hidden;
@@ -150,11 +156,11 @@ header {
     transform: scale(1.1);
 }
 
-.idea-ball.main {
+.idea-ball.main .idea-ball-inner {
     background: #6495ED;
 }
 
-.idea-ball.ai {
+.idea-ball.ai .idea-ball-inner {
     background: #98FB98;
     color: #333;
 }
@@ -204,21 +210,28 @@ header {
     border-radius: 50%;
     font-size: 14px;
     line-height: 1;
+    position: absolute;
 }
 
 .generate-btn {
     background-color: var(--bs-success);
     color: white;
+    right: -10px;
+    top: -10px;
 }
 
 .info-btn {
     background-color: var(--bs-info);
     color: white;
+    left: -10px;
+    top: -10px;
 }
 
 .merge-btn {
     background-color: var(--bs-warning);
     color: var(--bs-dark);
+    right: -10px;
+    bottom: -10px;
 }
 
 .generate-btn:hover {
