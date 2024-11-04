@@ -355,10 +355,77 @@ class IdeaManager {
     }
 
     showTooltip(ideaBall, text) {
-        console.log('Showing tooltip for:', text);
+        // If there's already a tooltip for this idea ball, toggle it off
+        const existingTooltip = ideaBall.querySelector('.idea-tooltip');
+        if (existingTooltip) {
+            existingTooltip.remove();
+            return;
+        }
+        
+        // Remove any other tooltips
+        document.querySelectorAll('.idea-tooltip').forEach(tooltip => tooltip.remove());
+        
+        // Create new tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'idea-tooltip';
+        tooltip.textContent = text;
+        tooltip.style.left = '130px';  // Position to the right of the idea ball
+        tooltip.style.top = '50%';
+        tooltip.style.transform = 'translateY(-50%)';
+        ideaBall.appendChild(tooltip);
     }
 
-    handleMergeMode(ideaBall) {
-        console.log('Handling merge mode for idea ball');
+    async handleMergeMode(ideaBall) {
+        const idea = this.ideas.find(i => i.element === ideaBall);
+        const ideaIndex = this.mergeIdeas.indexOf(idea);
+        
+        if (ideaIndex === -1) {
+            // Only allow selection if we haven't reached 2 ideas yet
+            if (this.mergeIdeas.length < 2) {
+                ideaBall.classList.add('merge-mode');
+                this.mergeIdeas.push(idea);
+                
+                // If this is the second idea, immediately generate the combined idea
+                if (this.mergeIdeas.length === 2) {
+                    const idea1 = this.mergeIdeas[0];
+                    const idea2 = this.mergeIdeas[1];
+                    
+                    try {
+                        const response = await fetch('/generate-ideas', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 
+                                idea: `Combine these two ideas: 1. ${idea1.text} 2. ${idea2.text}`
+                            })
+                        });
+
+                        const data = await response.json();
+                        if (data.success) {
+                            const combinedIdeas = JSON.parse(data.data).ideas;
+                            const x1 = parseInt(idea1.element.style.left);
+                            const y1 = parseInt(idea1.element.style.top);
+                            const x2 = parseInt(idea2.element.style.left);
+                            const y2 = parseInt(idea2.element.style.top);
+                            const midX = (x1 + x2) / 2;
+                            const midY = (y1 + y2) / 2;
+                            
+                            const newIdea = this.addIdea(midX, midY, combinedIdeas[0].text);
+                            this.connectIdeas(idea1, newIdea);
+                            this.connectIdeas(idea2, newIdea);
+                        }
+                    } finally {
+                        // Clear merge mode
+                        this.mergeIdeas.forEach(idea => idea.element.classList.remove('merge-mode'));
+                        this.mergeIdeas = [];
+                    }
+                }
+            }
+        } else {
+            // Allow deselection
+            ideaBall.classList.remove('merge-mode');
+            this.mergeIdeas.splice(ideaIndex, 1);
+        }
     }
 }

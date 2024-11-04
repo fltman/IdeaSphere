@@ -131,6 +131,11 @@ header {
     transform: scale(1.1);
 }
 
+.idea-ball.merge-mode {
+    box-shadow: 0 0 0 4px var(--bs-warning);
+    transform: scale(1.1);
+}
+
 .idea-ball.main {
     background: #6495ED;
 }
