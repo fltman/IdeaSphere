@@ -65,7 +65,6 @@ class CanvasManager {
             this.render();
         });
         
-        // Handle mouse events
         this.canvas.addEventListener('mousedown', (e) => {
             this.handleMouseDown(e);
         });
@@ -86,22 +85,18 @@ class CanvasManager {
             this.handleClick(e);
         });
         
-        // Hide tooltip when mouse leaves canvas
         this.canvas.addEventListener('mouseleave', () => {
             if (!this.isPermanentTooltip) {
                 this.hideTooltip();
             }
         });
 
-        // Handle clicks outside canvas to hide permanent tooltip
         document.addEventListener('click', (e) => {
             if (!this.canvas.contains(e.target) && this.isPermanentTooltip) {
                 this.isPermanentTooltip = false;
                 this.hideTooltip();
             }
         });
-        
-        console.log('Event listeners setup complete');
     }
 
     updateTooltip(e, forceShow = false) {
@@ -115,11 +110,9 @@ class CanvasManager {
             this.tooltip.textContent = idea.text;
             this.tooltip.style.display = 'block';
             
-            // Position tooltip relative to viewport
             const tooltipX = e.clientX + 10;
             const tooltipY = e.clientY + 10;
             
-            // Adjust position if tooltip would go off screen
             const tooltipRect = this.tooltip.getBoundingClientRect();
             if (tooltipX + tooltipRect.width > window.innerWidth) {
                 this.tooltip.style.left = (e.clientX - tooltipRect.width - 10) + 'px';
@@ -147,7 +140,6 @@ class CanvasManager {
     }
 
     drawIdea(idea) {
-        console.log('Drawing idea:', idea);
         this.ctx.beginPath();
         this.ctx.arc(idea.x, idea.y, 60, 0, Math.PI * 2);
         this.ctx.fillStyle = idea.isAIGenerated ? '#98FB98' : '#6495ED';
@@ -177,7 +169,6 @@ class CanvasManager {
     }
 
     render() {
-        console.log('Rendering canvas with ideas:', this.ideas);
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.drawConnections();
         this.ideas.forEach(idea => this.drawIdea(idea));
@@ -186,23 +177,20 @@ class CanvasManager {
     addIdea(x, y, text, isAIGenerated = false) {
         const idea = { x, y, text, isAIGenerated };
         this.ideas.push(idea);
-        console.log('Added new idea:', idea);
         this.centerOnPoint(x, y);
         return idea;
     }
 
     connectIdeas(idea1, idea2) {
         this.connections.push({ from: idea1, to: idea2 });
-        console.log('Connected ideas:', { from: idea1, to: idea2 });
     }
 
     getIdeaAtPosition(x, y) {
-        const clickRadius = 60; // Match the drawing radius
+        const clickRadius = 60;
         return this.ideas.find(idea => {
             const dx = idea.x - x;
             const dy = idea.y - y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            console.log('Checking idea distance:', { idea, distance, clickRadius });
             return distance <= clickRadius;
         });
     }
@@ -212,16 +200,13 @@ class CanvasManager {
         const container = this.canvas.parentElement;
         const x = e.clientX - rect.left + container.scrollLeft;
         const y = e.clientY - rect.top + container.scrollTop;
-
-        console.log('Mouse down at:', { x, y, clientX: e.clientX, clientY: e.clientY });
-        const clickedIdea = this.getIdeaAtPosition(x, y);
         
+        const clickedIdea = this.getIdeaAtPosition(x, y);
         if (clickedIdea) {
-            console.log('Starting drag operation:', clickedIdea);
+            e.stopPropagation(); // Prevent modal from showing
             this.selectedIdea = clickedIdea;
             this.isDragging = true;
-            // Prevent showing new idea modal
-            e.stopPropagation();
+            console.log('Starting drag operation:', clickedIdea);
         }
     }
 
@@ -234,11 +219,6 @@ class CanvasManager {
         const container = this.canvas.parentElement;
         const newX = e.clientX - rect.left + container.scrollLeft;
         const newY = e.clientY - rect.top + container.scrollTop;
-        
-        console.log('Dragging idea:', {
-            from: { x: this.selectedIdea.x, y: this.selectedIdea.y },
-            to: { x: newX, y: newY }
-        });
         
         this.selectedIdea.x = newX;
         this.selectedIdea.y = newY;
@@ -257,34 +237,21 @@ class CanvasManager {
     handleClick(e) {
         const rect = this.canvas.getBoundingClientRect();
         const container = this.canvas.parentElement;
-        const viewportCenter = this.getViewportCenter();
-        
-        // Calculate coordinates relative to viewport
-        const x = Math.min(
-            Math.max(
-                e.clientX - rect.left + container.scrollLeft,
-                viewportCenter.x - 500
-            ),
-            viewportCenter.x + 500
-        );
-        
-        const y = Math.min(
-            Math.max(
-                e.clientY - rect.top + container.scrollTop,
-                viewportCenter.y - 500
-            ),
-            viewportCenter.y + 500
-        );
+        const x = e.clientX - rect.left + container.scrollLeft;
+        const y = e.clientY - rect.top + container.scrollTop;
         
         const clickedIdea = this.getIdeaAtPosition(x, y);
         console.log('Canvas clicked:', { x, y, clickedIdea });
         
         if (clickedIdea) {
-            // Show permanent tooltip for clicked idea
-            console.log('Showing permanent tooltip for idea:', clickedIdea);
+            // Show tooltip for clicked idea
             this.updateTooltip(e, true);
-        } else if (!this.isDragging) {
-            // Only dispatch event for creating new idea if not dragging
+            e.stopPropagation(); // Prevent modal from showing
+            return;
+        }
+        
+        if (!this.isDragging) {
+            // Only dispatch event for creating new idea if not dragging and not clicking existing idea
             console.log('Dispatching canvas-click event for new idea:', { x, y });
             const event = new CustomEvent('canvas-click', {
                 detail: { x, y }
