@@ -161,7 +161,9 @@ header {
     padding: 1rem;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    max-width: 300px;
+    max-width: 400px;  /* Increased from 300px */
+    max-height: 300px; /* Added max-height */
+    overflow-y: auto;  /* Added vertical scrolling */
     font-size: 14px;
     line-height: 1.4;
     word-wrap: break-word;
