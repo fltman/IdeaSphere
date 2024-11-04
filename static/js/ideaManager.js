@@ -16,6 +16,23 @@ class IdeaManager {
         this.startPhysicsLoop();
     }
 
+    enterSelectMode() {
+        this.isSelectMode = true;
+        this.selectedIdeas = [];
+        this.ideas.forEach(idea => {
+            idea.element.classList.add('merge-mode');
+        });
+    }
+
+    exitSelectMode() {
+        this.isSelectMode = false;
+        this.selectedIdeas = [];
+        this.ideas.forEach(idea => {
+            idea.element.classList.remove('merge-mode');
+            idea.element.classList.remove('selected');
+        });
+    }
+
     setupEventListeners() {
         this.workspace.addEventListener('click', (e) => {
             if (e.target === this.workspace) {
@@ -221,6 +238,22 @@ class IdeaManager {
             }
             this.isDragging = false;
             this.selectedIdea = null;
+        });
+
+        ideaBall.addEventListener('click', (e) => {
+            if (this.isSelectMode) {
+                e.stopPropagation();
+                const idea = this.ideas.find(i => i.element === ideaBall);
+                const index = this.selectedIdeas.indexOf(idea);
+                
+                if (index === -1 && this.selectedIdeas.length < 2) {
+                    this.selectedIdeas.push(idea);
+                    idea.element.classList.add('selected');
+                } else if (index !== -1) {
+                    this.selectedIdeas.splice(index, 1);
+                    idea.element.classList.remove('selected');
+                }
+            }
         });
     }
 
