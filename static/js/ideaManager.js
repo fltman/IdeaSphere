@@ -37,7 +37,7 @@ class IdeaManager {
     startPhysicsLoop() {
         const animate = () => {
             const currentTime = performance.now();
-            const deltaTime = (currentTime - this.lastFrameTime) / 1000; // Convert to seconds
+            const deltaTime = (currentTime - this.lastFrameTime) / 1000;
             this.lastFrameTime = currentTime;
 
             this.updatePhysics(deltaTime);
@@ -54,21 +54,18 @@ class IdeaManager {
     }
 
     updatePhysics(deltaTime) {
-        const damping = 0.98; // Damping factor to gradually slow down movement
-        const minSpeed = 0.1; // Minimum speed threshold
+        const damping = 0.98;
+        const minSpeed = 0.1;
 
-        // Update positions based on velocities
         for (const idea of this.ideas) {
             if (!this.isDragging || idea.element !== this.selectedIdea) {
                 let velocity = this.velocities.get(idea) || { x: 0, y: 0 };
                 
-                // Apply velocity to position
                 let x = parseInt(idea.element.style.left) + velocity.x * deltaTime;
                 let y = parseInt(idea.element.style.top) + velocity.y * deltaTime;
 
-                // Bounce off workspace boundaries
-                const minPadding = 60;  // Reduced from 120
-                const minX = 250 + minPadding;  // Start after recent ideas box
+                const minPadding = 60;
+                const minX = 250 + minPadding;
                 const maxX = this.workspace.clientWidth - minPadding;
                 const minY = minPadding;
                 const maxY = this.workspace.clientHeight - minPadding;
@@ -89,22 +86,18 @@ class IdeaManager {
                     velocity.y = -Math.abs(velocity.y);
                 }
 
-                // Apply damping
                 velocity.x *= damping;
                 velocity.y *= damping;
 
-                // Stop if speed is below threshold
                 if (Math.abs(velocity.x) < minSpeed) velocity.x = 0;
                 if (Math.abs(velocity.y) < minSpeed) velocity.y = 0;
 
-                // Update position and velocity
                 idea.element.style.left = `${x}px`;
                 idea.element.style.top = `${y}px`;
                 this.velocities.set(idea, velocity);
             }
         }
 
-        // Check for collisions between balls
         for (let i = 0; i < this.ideas.length; i++) {
             for (let j = i + 1; j < this.ideas.length; j++) {
                 const idea1 = this.ideas[i];
@@ -126,19 +119,16 @@ class IdeaManager {
                 const dx = pos2.x - pos1.x;
                 const dy = pos2.y - pos1.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                const minDistance = 120; // Diameter of idea ball
+                const minDistance = 120;
 
                 if (distance < minDistance) {
-                    // Collision detected - calculate new velocities
                     const angle = Math.atan2(dy, dx);
                     const vel1 = this.velocities.get(idea1) || { x: 0, y: 0 };
                     const vel2 = this.velocities.get(idea2) || { x: 0, y: 0 };
 
-                    // Calculate collision response
                     const speed1 = Math.sqrt(vel1.x * vel1.x + vel1.y * vel1.y);
                     const speed2 = Math.sqrt(vel2.x * vel2.x + vel2.y * vel2.y);
 
-                    // Elastic collision
                     const newVel1 = {
                         x: speed2 * Math.cos(angle),
                         y: speed2 * Math.sin(angle)
@@ -148,7 +138,6 @@ class IdeaManager {
                         y: speed1 * Math.sin(angle + Math.PI)
                     };
 
-                    // Apply some minimum velocity if both balls are stationary
                     if (speed1 < 0.1 && speed2 < 0.1) {
                         const pushForce = 100;
                         newVel1.x = pushForce * Math.cos(angle);
@@ -160,7 +149,6 @@ class IdeaManager {
                     this.velocities.set(idea1, newVel1);
                     this.velocities.set(idea2, newVel2);
 
-                    // Separate the balls to prevent sticking
                     const overlap = minDistance - distance;
                     const separationX = (overlap * dx) / distance / 2;
                     const separationY = (overlap * dy) / distance / 2;
@@ -193,7 +181,6 @@ class IdeaManager {
                 e.dataTransfer.setDragImage(dragImage, 0, 0);
                 setTimeout(() => document.body.removeChild(dragImage), 0);
 
-                // Reset velocity when starting to drag
                 const idea = this.ideas.find(i => i.element === ideaBall);
                 this.velocities.set(idea, { x: 0, y: 0 });
             }
@@ -206,8 +193,8 @@ class IdeaManager {
             const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
             const y = e.clientY - rect.top + this.workspace.scrollTop - this.dragStartPos.y;
             
-            const minPadding = 60;  // Reduced from 120
-            const minX = 250 + minPadding;  // Start after recent ideas box
+            const minPadding = 60;
+            const minX = 250 + minPadding;
             const boundedX = Math.max(minX, Math.min(x, this.workspace.clientWidth - minPadding));
             const boundedY = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
             
@@ -221,14 +208,13 @@ class IdeaManager {
             if (this.isDragging && this.selectedIdea) {
                 const idea = this.ideas.find(i => i.element === this.selectedIdea);
                 if (idea) {
-                    // Calculate final velocity based on drag movement
                     const lastX = parseInt(this.selectedIdea.style.left);
                     const lastY = parseInt(this.selectedIdea.style.top);
                     const deltaX = lastX - parseInt(this.selectedIdea.style.left);
                     const deltaY = lastY - parseInt(this.selectedIdea.style.top);
                     
                     this.velocities.set(idea, {
-                        x: deltaX * 5, // Multiply by a factor to make the movement more noticeable
+                        x: deltaX * 5,
                         y: deltaY * 5
                     });
                 }
@@ -250,7 +236,6 @@ class IdeaManager {
         inner.innerHTML = `<p class="idea-ball-text">${text}</p>`;
         ideaBall.appendChild(inner);
 
-        // Add action buttons
         const generateBtn = document.createElement('button');
         generateBtn.className = 'generate-btn';
         generateBtn.innerHTML = '+';
@@ -265,6 +250,70 @@ class IdeaManager {
         mergeBtn.className = 'merge-btn';
         mergeBtn.innerHTML = '⟲';
         ideaBall.appendChild(mergeBtn);
+
+        generateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idea = this.ideas.find(i => i.element === ideaBall);
+            idea.element.classList.add('generating');
+            
+            fetch('/generate-ideas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idea: text })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const generatedIdeas = JSON.parse(data.data).ideas;
+                    const radius = 150;
+                    const angleStep = (2 * Math.PI) / generatedIdeas.length;
+                    
+                    generatedIdeas.forEach((genIdea, index) => {
+                        const angle = angleStep * index;
+                        const newX = parseInt(idea.element.style.left) + radius * Math.cos(angle);
+                        const newY = parseInt(idea.element.style.top) + radius * Math.sin(angle);
+                        const newIdeaObj = this.addIdea(newX, newY, genIdea.text, true);
+                        this.connectIdeas(idea, newIdeaObj);
+                    });
+                }
+            })
+            .finally(() => {
+                idea.element.classList.remove('generating');
+            });
+        });
+
+        infoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tooltip = document.createElement('div');
+            tooltip.className = 'idea-tooltip';
+            tooltip.textContent = text;
+            tooltip.style.position = 'absolute';
+            
+            const rect = ideaBall.getBoundingClientRect();
+            tooltip.style.left = rect.left + 'px';
+            tooltip.style.top = (rect.top - 120) + 'px';
+            
+            document.body.appendChild(tooltip);
+            
+            const removeTooltip = (e) => {
+                if (!tooltip.contains(e.target) && e.target !== infoBtn) {
+                    document.removeEventListener('click', removeTooltip);
+                    tooltip.remove();
+                }
+            };
+            setTimeout(() => document.addEventListener('click', removeTooltip), 0);
+        });
+
+        mergeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idea = this.ideas.find(i => i.element === ideaBall);
+            if (!this.isSelectMode) {
+                this.enterSelectMode();
+                this.selectedIdeas = [idea];
+                idea.element.classList.add('selected');
+                document.getElementById('combineIdeasBtn').click();
+            }
+        });
         
         this.setupDragListeners(ideaBall);
         this.workspace.appendChild(ideaBall);
