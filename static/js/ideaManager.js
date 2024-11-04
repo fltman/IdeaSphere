@@ -230,28 +230,16 @@ class IdeaManager {
 
                 if (distance < minDistance) {
                     const angle = Math.atan2(dy, dx);
-                    const vel1 = this.velocities.get(idea1) || { x: 0, y: 0 };
-                    const vel2 = this.velocities.get(idea2) || { x: 0, y: 0 };
-
-                    const speed1 = Math.sqrt(vel1.x * vel1.x + vel1.y * vel1.y);
-                    const speed2 = Math.sqrt(vel2.x * vel2.x + vel2.y * vel2.y);
+                    const speed = Math.max(speed1, speed2, 100);
 
                     const newVel1 = {
-                        x: speed2 * Math.cos(angle),
-                        y: speed2 * Math.sin(angle)
+                        x: -speed * Math.cos(angle),
+                        y: -speed * Math.sin(angle)
                     };
                     const newVel2 = {
-                        x: speed1 * Math.cos(angle + Math.PI),
-                        y: speed1 * Math.sin(angle + Math.PI)
+                        x: speed * Math.cos(angle),
+                        y: speed * Math.sin(angle)
                     };
-
-                    if (speed1 < 0.1 && speed2 < 0.1) {
-                        const pushForce = 100;
-                        newVel1.x = pushForce * Math.cos(angle);
-                        newVel1.y = pushForce * Math.sin(angle);
-                        newVel2.x = -pushForce * Math.cos(angle);
-                        newVel2.y = -pushForce * Math.sin(angle);
-                    }
 
                     this.velocities.set(idea1, newVel1);
                     this.velocities.set(idea2, newVel2);
