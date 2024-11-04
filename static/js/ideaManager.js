@@ -27,9 +27,15 @@ class IdeaManager {
         const maxAttempts = 10;
         const spiralStep = 100;
         
-        // First ensure coordinates are within bounds
-        x = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
-        y = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
+        // Ensure coordinates are positive and within bounds
+        x = Math.max(minPadding, x);
+        y = Math.max(minPadding, y);
+        
+        // Also ensure they don't exceed workspace bounds
+        const maxX = this.workspace.clientWidth - minPadding;
+        const maxY = this.workspace.clientHeight - minPadding;
+        x = Math.min(x, maxX);
+        y = Math.min(y, maxY);
         
         if (!this.checkCollision(x, y, this.ideas)) return { x, y };
         
@@ -39,17 +45,16 @@ class IdeaManager {
             const newX = x + Math.cos(angle) * (spiralStep * i);
             const newY = y + Math.sin(angle) * (spiralStep * i);
             
-            // Ensure new position is within bounds
-            const boundedX = Math.max(minPadding, Math.min(newX, this.workspace.clientWidth - minPadding));
-            const boundedY = Math.max(minPadding, Math.min(newY, this.workspace.clientHeight - minPadding));
+            // Ensure spiral positions are also within bounds
+            const boundedX = Math.max(minPadding, Math.min(newX, maxX));
+            const boundedY = Math.max(minPadding, Math.min(newY, maxY));
             
             if (!this.checkCollision(boundedX, boundedY, this.ideas)) {
                 return { x: boundedX, y: boundedY };
             }
         }
         
-        // If no position found, return the last valid bounded position
-        return { x, y };
+        return { x, y }; // Return bounded position if no valid position found
     }
 
     setupEventListeners() {
@@ -102,24 +107,41 @@ class IdeaManager {
             }
         });
 
-        ideaBall.addEventListener('drag', (e) => {
-            if (this.isSelectMode || e.clientX === 0 && e.clientY === 0) return;
+        ideaBall.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Allow drop
+            if (this.isSelectMode) return;
             
             const rect = this.workspace.getBoundingClientRect();
-            const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
-            const y = e.clientY - rect.top + this.workspace.scrollTop - this.dragStartPos.y;
+            const scrollLeft = this.workspace.scrollLeft;
+            const scrollTop = this.workspace.scrollTop;
             
+            // Calculate new position ensuring it's positive
+            const x = Math.max(0, e.clientX - rect.left + scrollLeft);
+            const y = Math.max(0, e.clientY - rect.top + scrollTop);
+            
+            // Find valid position within bounds
             const position = this.findValidPosition(x, y);
-            ideaBall.style.left = `${position.x}px`;
-            ideaBall.style.top = `${position.y}px`;
             
-            this.updateConnections();
+            // Update position with animation frame for smoother movement
+            requestAnimationFrame(() => {
+                ideaBall.style.left = `${position.x}px`;
+                ideaBall.style.top = `${position.y}px`;
+                this.updateConnections();
+            });
         });
 
         ideaBall.addEventListener('dragend', () => {
+            if (this.isDragging && this.selectedIdea) {
+                const currentX = parseInt(ideaBall.style.left);
+                const currentY = parseInt(ideaBall.style.top);
+                const position = this.findValidPosition(currentX, currentY);
+                
+                ideaBall.style.left = `${position.x}px`;
+                ideaBall.style.top = `${position.y}px`;
+                this.updateConnections();
+            }
             this.isDragging = false;
             this.selectedIdea = null;
-            this.updateConnections();
         });
 
         ideaBall.addEventListener('click', (e) => {
