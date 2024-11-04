@@ -291,6 +291,113 @@ class IdeaManager {
         }
     }
 
-    // Rest of the code remains the same...
-    [Previous implementation of remaining methods]
+    clearWorkspace() {
+        this.ideas.forEach(idea => {
+            idea.element.remove();
+        });
+        this.ideas = [];
+        this.connections = [];
+        this.velocities.clear();
+        this.drawConnections();
+    }
+
+    addIdea(x, y, text, isAIGenerated = false, isCombined = false) {
+        const ideaBall = document.createElement('div');
+        ideaBall.className = `idea-ball ${isAIGenerated ? 'ai' : ''} ${isCombined ? 'combined' : ''}`;
+        ideaBall.style.left = `${x}px`;
+        ideaBall.style.top = `${y}px`;
+        
+        const inner = document.createElement('div');
+        inner.className = 'idea-ball-inner';
+        
+        const textContainer = document.createElement('div');
+        textContainer.className = 'idea-ball-text';
+        textContainer.textContent = text;
+        
+        inner.appendChild(textContainer);
+        ideaBall.appendChild(inner);
+        this.workspace.appendChild(ideaBall);
+        
+        const idea = { element: ideaBall, text };
+        this.ideas.push(idea);
+        this.velocities.set(idea, { x: 0, y: 0 });
+        
+        this.setupDragListeners(ideaBall);
+        return idea;
+    }
+
+    setupDragListeners(element) {
+        let startX, startY;
+        
+        element.addEventListener('mousedown', (e) => {
+            if (this.isSelectMode) return;
+            
+            this.isDragging = true;
+            this.selectedIdea = this.ideas.find(idea => idea.element === element);
+            
+            const rect = this.workspace.getBoundingClientRect();
+            startX = e.clientX - rect.left + this.workspace.scrollLeft;
+            startY = e.clientY - rect.top + this.workspace.scrollTop;
+            
+            element.style.zIndex = '1000';
+        });
+        
+        this.workspace.addEventListener('mousemove', (e) => {
+            if (!this.isDragging || !this.selectedIdea) return;
+            
+            const rect = this.workspace.getBoundingClientRect();
+            const x = e.clientX - rect.left + this.workspace.scrollLeft;
+            const y = e.clientY - rect.top + this.workspace.scrollTop;
+            
+            element.style.left = `${x}px`;
+            element.style.top = `${y}px`;
+            
+            this.drawConnections();
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (this.isDragging && this.selectedIdea) {
+                const rect = element.getBoundingClientRect();
+                const workspaceRect = this.workspace.getBoundingClientRect();
+                
+                element.style.zIndex = '';
+                this.isDragging = false;
+                this.selectedIdea = null;
+            }
+        });
+    }
+
+    connectIdeas(idea1, idea2) {
+        this.connections.push({ from: idea1, to: idea2 });
+        this.drawConnections();
+    }
+
+    drawConnections() {
+        const canvas = document.getElementById('connections-canvas');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        canvas.width = this.workspace.scrollWidth;
+        canvas.height = this.workspace.scrollHeight;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 2;
+        
+        this.connections.forEach(conn => {
+            const pos1 = conn.from.element.getBoundingClientRect();
+            const pos2 = conn.to.element.getBoundingClientRect();
+            const workspaceRect = this.workspace.getBoundingClientRect();
+            
+            const x1 = pos1.left - workspaceRect.left + pos1.width / 2 + this.workspace.scrollLeft;
+            const y1 = pos1.top - workspaceRect.top + pos1.height / 2 + this.workspace.scrollTop;
+            const x2 = pos2.left - workspaceRect.left + pos2.width / 2 + this.workspace.scrollLeft;
+            const y2 = pos2.top - workspaceRect.top + pos2.height / 2 + this.workspace.scrollTop;
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        });
+    }
 }
