@@ -44,6 +44,15 @@ class IdeaManager {
         generateBtn.style.right = '-10px';
         generateBtn.style.top = '-10px';
         ideaBall.appendChild(generateBtn);
+
+        // Add info button
+        const infoBtn = document.createElement('button');
+        infoBtn.className = 'btn btn-sm btn-info info-btn';
+        infoBtn.innerHTML = '<i>i</i>';
+        infoBtn.style.position = 'absolute';
+        infoBtn.style.left = '-10px';
+        infoBtn.style.top = '-10px';
+        ideaBall.appendChild(infoBtn);
         
         // Setup dragging
         ideaBall.setAttribute('draggable', 'true');
@@ -93,15 +102,16 @@ class IdeaManager {
         });
 
         ideaBall.addEventListener('click', (e) => {
-            if (e.target === generateBtn) {
+            if (e.target === generateBtn || e.target === infoBtn) {
                 e.stopPropagation();
-                this.handleGenerateClick(ideaBall, text);
+                if (e.target === generateBtn) {
+                    this.handleGenerateClick(ideaBall, text);
+                } else if (e.target === infoBtn) {
+                    this.showTooltip(ideaBall, text);
+                }
             } else if (this.isSelectMode) {
                 e.stopPropagation();
                 this.handleIdeaSelection(ideaBall);
-            } else {
-                e.stopPropagation();
-                this.showTooltip(ideaBall, text);
             }
         });
 
