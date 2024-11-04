@@ -39,7 +39,6 @@ class IdeaManager {
         ideaBall.style.left = `${x}px`;
         ideaBall.style.top = `${y}px`;
         
-        // Add generate button
         const generateBtn = document.createElement('button');
         generateBtn.className = 'btn btn-sm btn-secondary generate-btn';
         generateBtn.textContent = '+';
@@ -48,7 +47,6 @@ class IdeaManager {
         generateBtn.style.top = '-10px';
         ideaBall.appendChild(generateBtn);
 
-        // Add info button
         const infoBtn = document.createElement('button');
         infoBtn.className = 'btn btn-sm btn-info info-btn';
         infoBtn.innerHTML = '<i>i</i>';
@@ -57,7 +55,6 @@ class IdeaManager {
         infoBtn.style.top = '-10px';
         ideaBall.appendChild(infoBtn);
 
-        // Add merge button
         const mergeBtn = document.createElement('button');
         mergeBtn.className = 'btn btn-sm btn-warning merge-btn';
         mergeBtn.innerHTML = '⚡';
@@ -66,7 +63,6 @@ class IdeaManager {
         mergeBtn.style.bottom = '-10px';
         ideaBall.appendChild(mergeBtn);
         
-        // Setup dragging
         ideaBall.setAttribute('draggable', 'true');
         
         ideaBall.addEventListener('dragstart', (e) => {
@@ -78,7 +74,6 @@ class IdeaManager {
                     x: e.clientX - rect.left,
                     y: e.clientY - rect.top
                 };
-                // Create an invisible drag image
                 const dragImage = document.createElement('div');
                 dragImage.style.width = '0';
                 dragImage.style.height = '0';
@@ -95,12 +90,11 @@ class IdeaManager {
             const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
             const y = e.clientY - rect.top + this.workspace.scrollTop - this.dragStartPos.y;
             
-            // Ensure the dragged idea stays within bounds
             const minPadding = 120;
             const boundedX = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
             const boundedY = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
             
-            ideaBall.style.transform = 'translate(0, 0)'; // Reset transform
+            ideaBall.style.transform = 'translate(0, 0)';
             ideaBall.style.left = `${boundedX}px`;
             ideaBall.style.top = `${boundedY}px`;
             
@@ -142,6 +136,7 @@ class IdeaManager {
                 this.mergeIdeas.push(idea);
                 
                 if (this.mergeIdeas.length === 2) {
+                    this.mergeIdeas.forEach(idea => idea.element.classList.add('generating'));
                     this.generateCombinedIdea();
                 }
             }
@@ -181,8 +176,10 @@ class IdeaManager {
                 this.connectIdeas(idea2, newIdea);
             }
         } finally {
-            // Clear merge mode
-            this.mergeIdeas.forEach(idea => idea.element.classList.remove('merge-mode'));
+            this.mergeIdeas.forEach(idea => {
+                idea.element.classList.remove('merge-mode');
+                idea.element.classList.remove('generating');
+            });
             this.mergeIdeas = [];
         }
     }
@@ -203,7 +200,6 @@ class IdeaManager {
 
     async handleGenerateClick(ideaBall, text) {
         try {
-            // Add generating class to start animation
             ideaBall.classList.add('generating');
             
             console.log('Sending request to generate ideas for:', text);
@@ -218,7 +214,6 @@ class IdeaManager {
             const data = await response.json();
             console.log('Received response:', data);
             
-            // Remove generating class when done
             ideaBall.classList.remove('generating');
             
             if (data.success) {
@@ -245,14 +240,12 @@ class IdeaManager {
                 this.centerOnPoint(parseInt(ideaBall.style.left), parseInt(ideaBall.style.top));
             }
         } catch (error) {
-            // Remove generating class on error too
             ideaBall.classList.remove('generating');
             console.error('Error generating ideas:', error);
         }
     }
 
     addIdea(x, y, text, isAIGenerated = false) {
-        // Ensure minimum padding from edges
         const minPadding = 120;
         x = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
         y = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
@@ -335,22 +328,18 @@ class IdeaManager {
     }
 
     showTooltip(element, text) {
-        // If there's already a tooltip for this element, remove it
         if (this.activeTooltip && this.activeTooltip.parentElement === element) {
             this.hideAllTooltips();
             this.activeTooltip = null;
             return;
         }
 
-        // Hide any other visible tooltips
         this.hideAllTooltips();
 
-        // Create and show new tooltip
         const tooltip = document.createElement('div');
         tooltip.className = 'idea-tooltip';
         tooltip.textContent = text;
         
-        // Position tooltip next to the idea ball
         element.appendChild(tooltip);
         this.activeTooltip = tooltip;
     }
