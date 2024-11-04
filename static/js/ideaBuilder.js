@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 pendingIdeaPosition.y,
                 ideaText
             );
-            ideaManager.addToHistory(ideaText, true);
             console.log('New idea created:', newIdea);
             
             ideaInput.value = '';
