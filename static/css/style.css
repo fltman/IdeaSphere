@@ -111,7 +111,7 @@ header {
 }
 
 .idea-ball {
-    position: absolute;
+    position: relative;  /* For absolute positioning of children */
     width: 120px;
     height: 120px;
     border-radius: 50%;
@@ -191,7 +191,8 @@ header {
 .info-btn,
 .generate-btn,
 .merge-btn {
-    z-index: 1;
+    position: absolute;
+    z-index: 10;
     width: 24px;
     height: 24px;
     padding: 0;
@@ -200,20 +201,26 @@ header {
     justify-content: center;
     border-radius: 50%;
     font-size: 14px;
-    line-height: 1;
+    border: 2px solid var(--bs-body-bg);
 }
 
 .generate-btn {
+    right: -10px;
+    top: -10px;
     background-color: var(--bs-success);
     color: white;
 }
 
 .info-btn {
+    left: -10px;
+    top: -10px;
     background-color: var(--bs-info);
     color: white;
 }
 
 .merge-btn {
+    right: -10px;
+    bottom: -10px;
     background-color: var(--bs-warning);
     color: var(--bs-dark);
 }
