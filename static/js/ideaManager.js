@@ -57,7 +57,13 @@ class IdeaManager {
                     x: e.clientX - rect.left,
                     y: e.clientY - rect.top
                 };
-                e.dataTransfer.setDragImage(ideaBall, this.dragStartPos.x, this.dragStartPos.y);
+                // Create an invisible drag image
+                const dragImage = document.createElement('div');
+                dragImage.style.width = '0';
+                dragImage.style.height = '0';
+                document.body.appendChild(dragImage);
+                e.dataTransfer.setDragImage(dragImage, 0, 0);
+                setTimeout(() => document.body.removeChild(dragImage), 0);
             }
         });
 
@@ -73,6 +79,7 @@ class IdeaManager {
             const boundedX = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
             const boundedY = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
             
+            ideaBall.style.transform = 'translate(0, 0)'; // Reset transform
             ideaBall.style.left = `${boundedX}px`;
             ideaBall.style.top = `${boundedY}px`;
             
