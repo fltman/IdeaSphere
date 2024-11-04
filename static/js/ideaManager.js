@@ -18,14 +18,12 @@ class IdeaManager {
         this.remainingTime = this.timerDuration;
         this.isTimerPaused = false;
         this.countdownDisplay = document.getElementById('countdownDisplay');
-        this.velocities = new Map(); // Store velocities for elastic movement
+        this.velocities = new Map();
         this.lastFrameTime = performance.now();
         this.animationFrame = null;
 
         this.setupEventListeners();
         this.updateCountdownDisplay();
-        
-        // Start the physics animation loop
         this.startPhysicsLoop();
 
         window.addEventListener('resize', () => {
@@ -34,7 +32,6 @@ class IdeaManager {
     }
 
     setupEventListeners() {
-        // Setup workspace click event
         this.workspace.addEventListener('click', (e) => {
             if (e.target === this.workspace) {
                 const rect = this.workspace.getBoundingClientRect();
@@ -47,6 +44,44 @@ class IdeaManager {
                 document.dispatchEvent(event);
             }
         });
+    }
+
+    enterSelectMode() {
+        this.isSelectMode = true;
+        this.selectedIdeas = [];
+        this.ideas.forEach(idea => {
+            idea.element.addEventListener('click', this.handleIdeaSelection);
+            idea.element.style.cursor = 'pointer';
+        });
+    }
+
+    exitSelectMode() {
+        this.isSelectMode = false;
+        this.selectedIdeas.forEach(idea => {
+            idea.element.classList.remove('merge-mode');
+        });
+        this.ideas.forEach(idea => {
+            idea.element.removeEventListener('click', this.handleIdeaSelection);
+            idea.element.style.cursor = 'move';
+        });
+        this.selectedIdeas = [];
+    }
+
+    handleIdeaSelection = (e) => {
+        e.stopPropagation();
+        const clickedElement = e.currentTarget;
+        const idea = this.ideas.find(i => i.element === clickedElement);
+        
+        if (idea) {
+            const index = this.selectedIdeas.findIndex(i => i === idea);
+            if (index === -1 && this.selectedIdeas.length < 2) {
+                this.selectedIdeas.push(idea);
+                clickedElement.classList.add('merge-mode');
+            } else if (index !== -1) {
+                this.selectedIdeas.splice(index, 1);
+                clickedElement.classList.remove('merge-mode');
+            }
+        }
     }
 
     updateCountdownDisplay() {
@@ -106,7 +141,7 @@ class IdeaManager {
     startPhysicsLoop() {
         const animate = () => {
             const currentTime = performance.now();
-            const deltaTime = (currentTime - this.lastFrameTime) / 1000; // Convert to seconds
+            const deltaTime = (currentTime - this.lastFrameTime) / 1000;
             this.lastFrameTime = currentTime;
 
             this.updatePhysics(deltaTime);
@@ -123,22 +158,19 @@ class IdeaManager {
     }
 
     updatePhysics(deltaTime) {
-        const damping = 0.98; // Damping factor to gradually slow down movement
-        const minSpeed = 0.1; // Minimum speed threshold
+        const damping = 0.98;
+        const minSpeed = 0.1;
 
-        // Update positions based on velocities
         for (const idea of this.ideas) {
             if (!this.isDragging || idea.element !== this.selectedIdea) {
                 let velocity = this.velocities.get(idea) || { x: 0, y: 0 };
                 
-                // Apply velocity to position
                 const rect = idea.element.getBoundingClientRect();
                 const workspaceRect = this.workspace.getBoundingClientRect();
                 
                 let x = parseInt(idea.element.style.left) + velocity.x * deltaTime;
                 let y = parseInt(idea.element.style.top) + velocity.y * deltaTime;
 
-                // Bounce off workspace boundaries
                 const radius = rect.width / 2;
                 const minX = radius;
                 const maxX = this.workspace.clientWidth - radius;
@@ -161,22 +193,18 @@ class IdeaManager {
                     velocity.y = -Math.abs(velocity.y);
                 }
 
-                // Apply damping
                 velocity.x *= damping;
                 velocity.y *= damping;
 
-                // Stop if speed is below threshold
                 if (Math.abs(velocity.x) < minSpeed) velocity.x = 0;
                 if (Math.abs(velocity.y) < minSpeed) velocity.y = 0;
 
-                // Update position and velocity
                 idea.element.style.left = `${x}px`;
                 idea.element.style.top = `${y}px`;
                 this.velocities.set(idea, velocity);
             }
         }
 
-        // Check for collisions between balls
         for (let i = 0; i < this.ideas.length; i++) {
             for (let j = i + 1; j < this.ideas.length; j++) {
                 const idea1 = this.ideas[i];
@@ -198,19 +226,16 @@ class IdeaManager {
                 const dx = pos2.x - pos1.x;
                 const dy = pos2.y - pos1.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                const minDistance = 120; // Diameter of idea ball
+                const minDistance = 120;
 
                 if (distance < minDistance) {
-                    // Collision detected - calculate new velocities
                     const angle = Math.atan2(dy, dx);
                     const vel1 = this.velocities.get(idea1) || { x: 0, y: 0 };
                     const vel2 = this.velocities.get(idea2) || { x: 0, y: 0 };
 
-                    // Calculate collision response
                     const speed1 = Math.sqrt(vel1.x * vel1.x + vel1.y * vel1.y);
                     const speed2 = Math.sqrt(vel2.x * vel2.x + vel2.y * vel2.y);
 
-                    // Elastic collision
                     const newVel1 = {
                         x: speed2 * Math.cos(angle),
                         y: speed2 * Math.sin(angle)
@@ -220,7 +245,6 @@ class IdeaManager {
                         y: speed1 * Math.sin(angle + Math.PI)
                     };
 
-                    // Apply some minimum velocity if both balls are stationary
                     if (speed1 < 0.1 && speed2 < 0.1) {
                         const pushForce = 100;
                         newVel1.x = pushForce * Math.cos(angle);
@@ -232,7 +256,6 @@ class IdeaManager {
                     this.velocities.set(idea1, newVel1);
                     this.velocities.set(idea2, newVel2);
 
-                    // Separate the balls to prevent sticking
                     const overlap = minDistance - distance;
                     const separationX = (overlap * dx) / distance / 2;
                     const separationY = (overlap * dy) / distance / 2;
@@ -265,7 +288,6 @@ class IdeaManager {
                 e.dataTransfer.setDragImage(dragImage, 0, 0);
                 setTimeout(() => document.body.removeChild(dragImage), 0);
 
-                // Reset velocity when starting to drag
                 const idea = this.ideas.find(i => i.element === ideaBall);
                 this.velocities.set(idea, { x: 0, y: 0 });
             }
@@ -292,14 +314,13 @@ class IdeaManager {
             if (this.isDragging && this.selectedIdea) {
                 const idea = this.ideas.find(i => i.element === this.selectedIdea);
                 if (idea) {
-                    // Calculate final velocity based on drag movement
                     const lastX = parseInt(this.selectedIdea.style.left);
                     const lastY = parseInt(this.selectedIdea.style.top);
                     const deltaX = lastX - parseInt(this.selectedIdea.style.left);
                     const deltaY = lastY - parseInt(this.selectedIdea.style.top);
                     
                     this.velocities.set(idea, {
-                        x: deltaX * 5, // Multiply by a factor to make the movement more noticeable
+                        x: deltaX * 5,
                         y: deltaY * 5
                     });
                 }
