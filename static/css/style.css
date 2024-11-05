@@ -1,10 +1,10 @@
 :root {
-    --header-height: 0px;
+    --header-height: 0px;  /* Changed from 80px */
     --controls-height: 70px;
 }
 
 header {
-    display: none;
+    display: none;  /* Hide header */
 }
 
 body {
@@ -104,18 +104,24 @@ body {
 }
 
 @keyframes pulsate-merge {
-    0% {
+    0% { 
         transform: scale(1);
         box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
     }
-    50% {
+    70% {
         transform: scale(1.05);
-        box-shadow: 0 0 0 20px rgba(255, 193, 7, 0);
+        box-shadow: 0 0 0 15px rgba(255, 193, 7, 0);
     }
     100% {
         transform: scale(1);
         box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
     }
+}
+
+@keyframes floating {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+    100% { transform: translateY(0px); }
 }
 
 .idea-ball {
@@ -131,10 +137,11 @@ body {
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(5px);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-    z-index: 1;
+    animation: floating 3s ease-in-out infinite;
 }
 
 .idea-ball:hover {
+    animation: none;
     transform: scale(1.05);
     box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
 }
@@ -143,10 +150,9 @@ body {
     animation: pulsate 1.5s ease-in-out infinite;
 }
 
+.idea-ball.selected,
 .idea-ball.merge-mode {
-    animation: pulsate-merge 1.5s ease-in-out infinite !important;
-    box-shadow: 0 0 25px rgba(255, 193, 7, 0.5);
-    z-index: 2;
+    animation: pulsate-merge 1.5s ease-in-out infinite;
 }
 
 .idea-ball.merge-mode .idea-ball-inner {
@@ -212,8 +218,7 @@ body {
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     width: 400px;
-    height: auto;
-    max-height: 200px;
+    height: 100px;
     border: 2px solid var(--bs-secondary);
     overflow-y: auto;
     font-size: 14px;
@@ -239,7 +244,7 @@ body {
 .info-btn,
 .generate-btn,
 .merge-btn {
-    z-index: 3;
+    z-index: 1;
     width: 24px;
     height: 24px;
     padding: 0;
@@ -250,7 +255,6 @@ body {
     font-size: 14px;
     line-height: 1;
     position: absolute;
-    border: none;
 }
 
 .generate-btn {
@@ -275,16 +279,13 @@ body {
 }
 
 .generate-btn:hover {
-    background-color: var(--bs-success);
-    filter: brightness(1.1);
+    background-color: var(--bs-success-hover);
 }
 
 .info-btn:hover {
-    background-color: var(--bs-info);
-    filter: brightness(1.1);
+    background-color: var(--bs-info-hover);
 }
 
 .merge-btn:hover {
-    background-color: var(--bs-warning);
-    filter: brightness(1.1);
+    background-color: var(--bs-warning-hover);
 }

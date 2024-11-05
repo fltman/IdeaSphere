@@ -21,108 +21,14 @@ class IdeaManager {
         this.velocities = new Map();
         this.lastFrameTime = performance.now();
         this.animationFrame = null;
-        this.tooltip = this.createTooltip();
 
         this.setupEventListeners();
+        this.updateCountdownDisplay();
         this.startPhysicsLoop();
 
         window.addEventListener('resize', () => {
             this.drawConnections();
         });
-    }
-
-    updateCountdownDisplay() {
-        if (!this.countdownDisplay) return;
-        
-        if (!this.timer) {
-            this.countdownDisplay.textContent = '';
-            return;
-        }
-        
-        const minutes = Math.floor(this.remainingTime / 60000);
-        const seconds = Math.floor((this.remainingTime % 60000) / 1000);
-        this.countdownDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
-
-    startTimer() {
-        if (this.timer) return;
-        
-        const startTime = Date.now() - (this.timerDuration - this.remainingTime);
-        this.timer = setInterval(() => {
-            if (!this.isTimerPaused) {
-                const elapsedTime = Date.now() - startTime;
-                this.remainingTime = Math.max(0, this.timerDuration - elapsedTime);
-                this.updateCountdownDisplay();
-                
-                if (this.remainingTime === 0) {
-                    this.stopTimer();
-                }
-            }
-        }, 100);
-        
-        this.updateCountdownDisplay();
-    }
-
-    pauseTimer() {
-        this.isTimerPaused = true;
-    }
-
-    resumeTimer() {
-        this.isTimerPaused = false;
-    }
-
-    stopTimer() {
-        if (this.timer) {
-            clearInterval(this.timer);
-            this.timer = null;
-            this.updateCountdownDisplay();
-        }
-    }
-
-    setTimerDuration(minutes) {
-        this.timerDuration = minutes * 60 * 1000;
-        this.remainingTime = this.timerDuration;
-        this.updateCountdownDisplay();
-    }
-
-    createTooltip() {
-        const tooltip = document.createElement('div');
-        tooltip.className = 'idea-tooltip';
-        tooltip.style.display = 'none';
-        this.workspace.appendChild(tooltip);
-        return tooltip;
-    }
-
-    showTooltip(ideaBall, text) {
-        const rect = ideaBall.getBoundingClientRect();
-        const workspaceRect = this.workspace.getBoundingClientRect();
-        
-        if (this.activeTooltip && this.activeTooltip.ideaBall === ideaBall) {
-            this.hideTooltip();
-            return;
-        }
-        
-        this.hideTooltip();
-        
-        this.tooltip.textContent = text;
-        this.tooltip.style.display = 'block';
-        
-        const tooltipX = rect.left - workspaceRect.left + rect.width + 10;
-        const tooltipY = rect.top - workspaceRect.top;
-        
-        this.tooltip.style.left = `${tooltipX}px`;
-        this.tooltip.style.top = `${tooltipY}px`;
-        
-        this.activeTooltip = { ideaBall, tooltip: this.tooltip };
-        this.isPermanentTooltip = true;
-    }
-
-    hideTooltip() {
-        if (this.tooltip) {
-            this.tooltip.style.display = 'none';
-            this.activeTooltip = null;
-            this.isPermanentTooltip = false;
-        }
     }
 
     setupEventListeners() {
@@ -137,75 +43,6 @@ class IdeaManager {
                 });
                 document.dispatchEvent(event);
             }
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!this.workspace.contains(e.target)) {
-                this.hideTooltip();
-            }
-        });
-    }
-
-    startPhysicsLoop() {
-        const animate = () => {
-            const currentTime = performance.now();
-            const deltaTime = (currentTime - this.lastFrameTime) / 1000;
-            this.lastFrameTime = currentTime;
-
-            this.updatePhysics(deltaTime);
-            this.animationFrame = requestAnimationFrame(animate);
-        };
-        this.animationFrame = requestAnimationFrame(animate);
-    }
-
-    stopPhysicsLoop() {
-        if (this.animationFrame) {
-            cancelAnimationFrame(this.animationFrame);
-            this.animationFrame = null;
-        }
-    }
-
-    updatePhysics(deltaTime) {
-        // Physics update logic remains the same...
-    }
-
-    setupDragListeners(ideaBall) {
-        ideaBall.addEventListener('dragstart', (e) => {
-            if (!this.isSelectMode) {
-                this.isDragging = true;
-                this.selectedIdea = ideaBall;
-                const rect = ideaBall.getBoundingClientRect();
-                this.dragStartPos = {
-                    x: e.clientX - rect.left,
-                    y: e.clientY - rect.top
-                };
-                const dragImage = document.createElement('div');
-                dragImage.style.width = '0';
-                dragImage.style.height = '0';
-                document.body.appendChild(dragImage);
-                e.dataTransfer.setDragImage(dragImage, 0, 0);
-                setTimeout(() => document.body.removeChild(dragImage), 0);
-
-                const idea = this.ideas.find(i => i.element === ideaBall);
-                if (idea) this.velocities.set(idea, { x: 0, y: 0 });
-            }
-        });
-
-        ideaBall.addEventListener('drag', (e) => {
-            if (this.isSelectMode || (e.clientX === 0 && e.clientY === 0)) return;
-            
-            const rect = this.workspace.getBoundingClientRect();
-            const x = e.clientX - rect.left - this.dragStartPos.x;
-            const y = e.clientY - rect.top - this.dragStartPos.y;
-            
-            ideaBall.style.left = `${x}px`;
-            ideaBall.style.top = `${y}px`;
-            this.drawConnections();
-        });
-
-        ideaBall.addEventListener('dragend', () => {
-            this.isDragging = false;
-            this.selectedIdea = null;
         });
     }
 
@@ -247,6 +84,279 @@ class IdeaManager {
         }
     }
 
+    updateCountdownDisplay() {
+        if (!this.countdownDisplay) return;
+        
+        if (!this.timer) {
+            this.countdownDisplay.textContent = '';
+            return;
+        }
+        
+        const minutes = Math.floor(this.remainingTime / 60000);
+        const seconds = Math.floor((this.remainingTime % 60000) / 1000);
+        this.countdownDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    startTimer() {
+        if (this.timer) return;
+        
+        const startTime = Date.now() - (this.timerDuration - this.remainingTime);
+        this.timer = setInterval(() => {
+            if (!this.isTimerPaused) {
+                const elapsedTime = Date.now() - startTime;
+                this.remainingTime = Math.max(0, this.timerDuration - elapsedTime);
+                this.updateCountdownDisplay();
+                
+                if (this.remainingTime === 0) {
+                    this.handleTimerExpired();
+                }
+            }
+        }, 100);
+        
+        this.updateCountdownDisplay();
+    }
+
+    pauseTimer() {
+        this.isTimerPaused = true;
+    }
+
+    resumeTimer() {
+        this.isTimerPaused = false;
+    }
+
+    stopTimer() {
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+            this.updateCountdownDisplay();
+        }
+    }
+
+    setTimerDuration(minutes) {
+        this.timerDuration = minutes * 60 * 1000;
+        this.remainingTime = this.timerDuration;
+        this.updateCountdownDisplay();
+    }
+
+    startPhysicsLoop() {
+        const animate = () => {
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - this.lastFrameTime) / 1000;
+            this.lastFrameTime = currentTime;
+
+            this.updatePhysics(deltaTime);
+            this.animationFrame = requestAnimationFrame(animate);
+        };
+        this.animationFrame = requestAnimationFrame(animate);
+    }
+
+    stopPhysicsLoop() {
+        if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
+            this.animationFrame = null;
+        }
+    }
+
+    updatePhysics(deltaTime) {
+        const damping = 0.98;
+        const minSpeed = 0.1;
+
+        for (const idea of this.ideas) {
+            if (!this.isDragging || idea.element !== this.selectedIdea) {
+                let velocity = this.velocities.get(idea) || { x: 0, y: 0 };
+                
+                const rect = idea.element.getBoundingClientRect();
+                const workspaceRect = this.workspace.getBoundingClientRect();
+                
+                let x = parseInt(idea.element.style.left) + velocity.x * deltaTime;
+                let y = parseInt(idea.element.style.top) + velocity.y * deltaTime;
+
+                const radius = rect.width / 2;
+                const minX = radius;
+                const maxX = this.workspace.clientWidth - radius;
+                const minY = radius;
+                const maxY = this.workspace.clientHeight - radius;
+
+                if (x < minX) {
+                    x = minX;
+                    velocity.x = Math.abs(velocity.x);
+                } else if (x > maxX) {
+                    x = maxX;
+                    velocity.x = -Math.abs(velocity.x);
+                }
+
+                if (y < minY) {
+                    y = minY;
+                    velocity.y = Math.abs(velocity.y);
+                } else if (y > maxY) {
+                    y = maxY;
+                    velocity.y = -Math.abs(velocity.y);
+                }
+
+                velocity.x *= damping;
+                velocity.y *= damping;
+
+                if (Math.abs(velocity.x) < minSpeed) velocity.x = 0;
+                if (Math.abs(velocity.y) < minSpeed) velocity.y = 0;
+
+                idea.element.style.left = `${x}px`;
+                idea.element.style.top = `${y}px`;
+                this.velocities.set(idea, velocity);
+            }
+        }
+
+        for (let i = 0; i < this.ideas.length; i++) {
+            for (let j = i + 1; j < this.ideas.length; j++) {
+                const idea1 = this.ideas[i];
+                const idea2 = this.ideas[j];
+
+                if (this.isDragging && (idea1.element === this.selectedIdea || idea2.element === this.selectedIdea)) {
+                    continue;
+                }
+
+                const pos1 = {
+                    x: parseInt(idea1.element.style.left),
+                    y: parseInt(idea1.element.style.top)
+                };
+                const pos2 = {
+                    x: parseInt(idea2.element.style.left),
+                    y: parseInt(idea2.element.style.top)
+                };
+
+                const dx = pos2.x - pos1.x;
+                const dy = pos2.y - pos1.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const minDistance = 120;
+
+                if (distance < minDistance) {
+                    const angle = Math.atan2(dy, dx);
+                    
+                    // Get current velocities for both ideas
+                    const vel1 = this.velocities.get(idea1) || { x: 0, y: 0 };
+                    const vel2 = this.velocities.get(idea2) || { x: 0, y: 0 };
+                    
+                    // Calculate current speeds
+                    const speed1 = Math.sqrt(vel1.x * vel1.x + vel1.y * vel1.y);
+                    const speed2 = Math.sqrt(vel2.x * vel2.x + vel2.y * vel2.y);
+                    
+                    // Use maximum of current speeds or minimum repulsion speed
+                    const speed = Math.max(speed1, speed2, 100);
+                    
+                    const newVel1 = {
+                        x: -speed * Math.cos(angle),
+                        y: -speed * Math.sin(angle)
+                    };
+                    const newVel2 = {
+                        x: speed * Math.cos(angle),
+                        y: speed * Math.sin(angle)
+                    };
+                    
+                    this.velocities.set(idea1, newVel1);
+                    this.velocities.set(idea2, newVel2);
+
+                    const overlap = minDistance - distance;
+                    const separationX = (overlap * dx) / distance / 2;
+                    const separationY = (overlap * dy) / distance / 2;
+
+                    idea1.element.style.left = `${pos1.x - separationX}px`;
+                    idea1.element.style.top = `${pos1.y - separationY}px`;
+                    idea2.element.style.left = `${pos2.x + separationX}px`;
+                    idea2.element.style.top = `${pos2.y + separationY}px`;
+                }
+            }
+        }
+
+        this.drawConnections();
+    }
+
+    setupDragListeners(ideaBall) {
+        ideaBall.addEventListener('dragstart', (e) => {
+            if (!this.isSelectMode) {
+                this.isDragging = true;
+                this.selectedIdea = ideaBall;
+                const rect = ideaBall.getBoundingClientRect();
+                this.dragStartPos = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+                const dragImage = document.createElement('div');
+                dragImage.style.width = '0';
+                dragImage.style.height = '0';
+                document.body.appendChild(dragImage);
+                e.dataTransfer.setDragImage(dragImage, 0, 0);
+                setTimeout(() => document.body.removeChild(dragImage), 0);
+
+                const idea = this.ideas.find(i => i.element === ideaBall);
+                this.velocities.set(idea, { x: 0, y: 0 });
+            }
+        });
+
+        ideaBall.addEventListener('drag', (e) => {
+            if (this.isSelectMode || e.clientX === 0 && e.clientY === 0) return;
+            
+            const rect = this.workspace.getBoundingClientRect();
+            const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
+            const y = e.clientY - rect.top + this.workspace.scrollTop - this.dragStartPos.y;
+            
+            const minPadding = 120;
+            const boundedX = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
+            const boundedY = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
+            
+            ideaBall.style.transform = 'translate(0, 0)';
+            ideaBall.style.left = `${boundedX}px`;
+            ideaBall.style.top = `${boundedY}px`;
+            this.drawConnections();
+        });
+
+        ideaBall.addEventListener('dragend', (e) => {
+            if (this.isDragging && this.selectedIdea) {
+                const idea = this.ideas.find(i => i.element === this.selectedIdea);
+                if (idea) {
+                    const lastX = parseInt(this.selectedIdea.style.left);
+                    const lastY = parseInt(this.selectedIdea.style.top);
+                    const deltaX = lastX - parseInt(this.selectedIdea.style.left);
+                    const deltaY = lastY - parseInt(this.selectedIdea.style.top);
+                    
+                    this.velocities.set(idea, {
+                        x: deltaX * 5,
+                        y: deltaY * 5
+                    });
+                }
+            }
+            this.isDragging = false;
+            this.selectedIdea = null;
+        });
+    }
+
+    drawConnections() {
+        const canvas = document.getElementById('connections-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = this.workspace.scrollWidth;
+        canvas.height = this.workspace.scrollHeight;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 2;
+        
+        this.connections.forEach(conn => {
+            const fromRect = conn.from.element.getBoundingClientRect();
+            const toRect = conn.to.element.getBoundingClientRect();
+            const workspaceRect = this.workspace.getBoundingClientRect();
+            
+            const fromX = fromRect.left - workspaceRect.left + this.workspace.scrollLeft + fromRect.width/2;
+            const fromY = fromRect.top - workspaceRect.top + this.workspace.scrollTop + fromRect.height/2;
+            const toX = toRect.left - workspaceRect.left + this.workspace.scrollLeft + toRect.width/2;
+            const toY = toRect.top - workspaceRect.top + this.workspace.scrollTop + toRect.height/2;
+            
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+        });
+    }
+
     addIdea(x, y, text, isAIGenerated = false, isCombined = false) {
         const ideaBall = document.createElement('div');
         ideaBall.className = `idea-ball ${isAIGenerated ? 'ai' : 'main'} ${isCombined ? 'combined' : ''}`;
@@ -283,7 +393,7 @@ class IdeaManager {
         mergeBtn.innerHTML = '⚡';
         mergeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.handleMergeClick(ideaBall);
+            this.handleMergeMode(ideaBall);
         });
         ideaBall.appendChild(mergeBtn);
 
@@ -292,28 +402,8 @@ class IdeaManager {
         this.workspace.appendChild(ideaBall);
         const idea = { element: ideaBall, text: text };
         this.ideas.push(idea);
-        this.addToHistory(text);
+        this.addToHistory(text, true);
         return idea;
-    }
-
-    async handleMergeClick(ideaBall) {
-        const idea = this.ideas.find(i => i.element === ideaBall);
-        if (!idea) return;
-
-        const ideaIndex = this.mergeIdeas.findIndex(i => i === idea);
-        if (ideaIndex === -1) {
-            if (this.mergeIdeas.length < 2) {
-                this.mergeIdeas.push(idea);
-                ideaBall.classList.add('merge-mode');
-            }
-        } else {
-            this.mergeIdeas.splice(ideaIndex, 1);
-            ideaBall.classList.remove('merge-mode');
-        }
-        
-        if (this.mergeIdeas.length === 2) {
-            await this.handleMerge();
-        }
     }
 
     async handleGenerateClick(ideaBall, text) {
@@ -327,27 +417,46 @@ class IdeaManager {
                 },
                 body: JSON.stringify({ idea: text })
             });
-            
+
             const data = await response.json();
+            ideaBall.classList.remove('generating');
             
             if (data.success) {
                 const relatedIdeas = JSON.parse(data.data).ideas;
-                const rect = ideaBall.getBoundingClientRect();
                 const radius = 150;
                 
+                const idea = this.ideas.find(i => i.element === ideaBall);
                 relatedIdeas.forEach((relatedIdea, index) => {
                     const angle = (2 * Math.PI * index) / relatedIdeas.length;
                     const x = parseInt(ideaBall.style.left) + radius * Math.cos(angle);
                     const y = parseInt(ideaBall.style.top) + radius * Math.sin(angle);
                     
                     const newIdea = this.addIdea(x, y, relatedIdea.text, true);
-                    this.connectIdeas(this.ideas.find(i => i.element === ideaBall), newIdea);
+                    this.connectIdeas(idea, newIdea);
                 });
             }
         } catch (error) {
             console.error('Error generating ideas:', error);
-        } finally {
             ideaBall.classList.remove('generating');
+        }
+    }
+
+    async handleMergeMode(ideaBall) {
+        const idea = this.ideas.find(i => i.element === ideaBall);
+        const ideaIndex = this.mergeIdeas.indexOf(idea);
+        
+        if (ideaIndex === -1) {
+            if (this.mergeIdeas.length < 2) {
+                this.mergeIdeas.push(idea);
+                ideaBall.classList.add('merge-mode');
+            }
+        } else {
+            this.mergeIdeas.splice(ideaIndex, 1);
+            ideaBall.classList.remove('merge-mode');
+        }
+        
+        if (this.mergeIdeas.length === 2) {
+            this.handleMerge();
         }
     }
 
@@ -385,51 +494,23 @@ class IdeaManager {
                 
                 this.connectIdeas(idea1, newIdea);
                 this.connectIdeas(idea2, newIdea);
+                
+                this.mergeIdeas.forEach(idea => {
+                    idea.element.classList.remove('merge-mode');
+                });
+                this.mergeIdeas = [];
             }
         } catch (error) {
             console.error('Error merging ideas:', error);
         } finally {
             idea1.element.classList.remove('generating');
             idea2.element.classList.remove('generating');
-            this.mergeIdeas.forEach(idea => {
-                idea.element.classList.remove('merge-mode');
-            });
-            this.mergeIdeas = [];
         }
     }
 
     connectIdeas(idea1, idea2) {
         this.connections.push({ from: idea1, to: idea2 });
         this.drawConnections();
-    }
-
-    drawConnections() {
-        const canvas = document.getElementById('connections-canvas');
-        const ctx = canvas.getContext('2d');
-        
-        canvas.width = this.workspace.scrollWidth;
-        canvas.height = this.workspace.scrollHeight;
-        
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.lineWidth = 2;
-        
-        this.connections.forEach(conn => {
-            const fromRect = conn.from.element.getBoundingClientRect();
-            const toRect = conn.to.element.getBoundingClientRect();
-            const workspaceRect = this.workspace.getBoundingClientRect();
-            
-            const fromX = fromRect.left - workspaceRect.left + fromRect.width/2;
-            const fromY = fromRect.top - workspaceRect.top + fromRect.height/2;
-            const toX = toRect.left - workspaceRect.left + toRect.width/2;
-            const toY = toRect.top - workspaceRect.top + toRect.height/2;
-            
-            ctx.beginPath();
-            ctx.moveTo(fromX, fromY);
-            ctx.lineTo(toX, toY);
-            ctx.stroke();
-        });
     }
 
     clearWorkspace() {
@@ -453,5 +534,16 @@ class IdeaManager {
         }
         
         historyList.insertBefore(listItem, historyList.firstChild);
+    }
+
+    showTooltip(ideaBall, text) {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'idea-tooltip';
+        tooltip.textContent = text;
+        tooltip.style.position = 'absolute';
+        tooltip.style.left = '120%';
+        tooltip.style.top = '50%';
+        tooltip.style.transform = 'translateY(-50%)';
+        ideaBall.appendChild(tooltip);
     }
 }
