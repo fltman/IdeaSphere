@@ -9,6 +9,29 @@
 </head>
 <body>
     <button id="toggleHistory" class="btn btn-sm btn-outline-secondary">Hide History</button>
+    <button id="toggleSettings" class="btn">⚙️</button>
+    
+    <div id="settingsPane" class="settings-pane" style="display: none;">
+        <h3>Settings</h3>
+        <div class="mb-4">
+            <label class="form-label">Combination Prompt</label>
+            <textarea 
+                class="form-control" 
+                id="combinationPrompt" 
+                rows="3"
+                placeholder="How should ideas be combined?">Generate 1 possible combination, focusing on how these ideas could work together</textarea>
+        </div>
+        <div class="mb-4">
+            <label class="form-label">Generation Prompt</label>
+            <textarea 
+                class="form-control" 
+                id="generationPrompt" 
+                rows="3"
+                placeholder="How should new ideas be generated?">Generate 3 related ideas for the concept</textarea>
+        </div>
+        <button class="btn btn-primary" id="saveSettings">Save Settings</button>
+    </div>
+
     <div id="historyContent" class="ideas-history">
         <h3>Recent Ideas</h3>
         <ul id="ideas-list"></ul>
@@ -21,28 +44,26 @@
     <div class="controls">
         <div class="timer-controls">
             <input type="number" id="timerInput" class="form-control" min="1" max="60" value="5" style="width: 80px">
-            <span>minutes</span>
+            <span>seconds</span>
             <button id="startTimer" class="btn btn-outline-success">Start Timer</button>
             <button id="pauseTimer" class="btn btn-outline-warning" disabled>Pause</button>
             <span id="countdownDisplay" class="countdown-display"></span>
         </div>
-        <button id="combineIdeasBtn" class="btn btn-outline-primary">Kombinera idéer</button>
-        <button id="clearCanvas" class="btn btn-outline-danger">Rensa arbetsyta</button>
+        <button id="clearCanvas" class="btn btn-outline-danger">Clear</button>
     </div>
 
     <div class="modal fade" id="ideaModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Ange din idé</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <input type="text" class="form-control" id="ideaInput" placeholder="Skriv din idé här">
+                    <input type="text" class="form-control" id="ideaInput" placeholder="Enter idea or URL" autofocus>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Avbryt</button>
-                    <button type="button" class="btn btn-primary" id="saveIdea">Spara</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveIdea">Save</button>
                 </div>
             </div>
         </div>
@@ -51,5 +72,55 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/ideaManager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ideaBuilder.js') }}"></script>
+    <script>
+        document.getElementById('ideaModal').addEventListener('shown.bs.modal', function () {
+            document.getElementById('ideaInput').focus();
+        });
+
+        // Settings toggle functionality
+        const settingsBtn = document.getElementById('toggleSettings');
+        const settingsPane = document.getElementById('settingsPane');
+        
+        settingsBtn.addEventListener('click', function() {
+            const isVisible = settingsPane.style.display !== 'none';
+            settingsPane.style.display = isVisible ? 'none' : 'block';
+            settingsBtn.classList.toggle('active');
+        });
+
+        // Load settings when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/get-settings')
+                .then(response => response.json())
+                .then(settings => {
+                    document.getElementById('combinationPrompt').value = settings.combination_prompt;
+                    document.getElementById('generationPrompt').value = settings.generation_prompt;
+                })
+                .catch(error => console.error('Error loading settings:', error));
+        });
+
+        // Save settings when the save button is clicked
+        document.getElementById('saveSettings').addEventListener('click', function() {
+            const settings = {
+                combination_prompt: document.getElementById('combinationPrompt').value,
+                generation_prompt: document.getElementById('generationPrompt').value
+            };
+
+            fetch('/update-settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Settings saved successfully!');
+                    document.getElementById('toggleSettings').click(); // Close the settings panel
+                }
+            })
+            .catch(error => console.error('Error saving settings:', error));
+        });
+    </script>
 </body>
 </html>

@@ -13,6 +13,52 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
+    background: linear-gradient(125deg, #2a0845, #111);
+    position: relative;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, transparent 30%, rgba(62, 84, 172, 0.2) 70%),
+                radial-gradient(circle at center, rgba(42, 8, 69, 0.2) 20%, transparent 70%);
+    animation: plasma 15s ease infinite;
+    z-index: -1;
+}
+
+body::after {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, rgba(75, 19, 79, 0.2) 30%, transparent 70%),
+                radial-gradient(circle at center, transparent 20%, rgba(29, 38, 113, 0.2) 70%);
+    animation: plasma 12s ease infinite reverse;
+    z-index: -1;
+}
+
+@keyframes plasma {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    25% {
+        transform: translate(-10%, 10%) rotate(1deg);
+    }
+    50% {
+        transform: translate(5%, -5%) rotate(-1deg);
+    }
+    75% {
+        transform: translate(10%, -10%) rotate(1deg);
+    }
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
 }
 
 #toggleHistory {
@@ -31,6 +77,8 @@ body {
     border-radius: 5px;
     z-index: 999;
     width:400px;
+    overflow: auto;
+    max-height: 80vh;
 }
 
 .ideas-history h3 {
@@ -43,6 +91,7 @@ body {
     list-style: none;
     padding: 0;
     margin: 0;
+    overflow-y: auto;
 }
 
 #ideas-list li {
@@ -64,7 +113,6 @@ body {
     width: 3000px;
     height: calc(100vh - var(--header-height) - var(--controls-height));
     overflow: auto;
-    background: var(--bs-body-bg);
     min-height: 3000px;
     padding: 100px;
     transform: translateX(-50%);
@@ -311,6 +359,8 @@ body {
     border-radius: 12px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    background-color: rgba(18, 18, 18, 0.85);
 }
 
 .modal-header {
@@ -360,4 +410,46 @@ body {
 .modal .btn-primary:hover {
     background-color: #0b5ed7;
     border-color: #0a58ca;
+}
+
+#toggleSettings {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: var(--bs-light);
+    z-index: 1000;
+    transition: background-color 0.2s ease;
+}
+
+#toggleSettings:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+#toggleSettings.active {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.settings-pane {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 12px;
+    padding: 20px;
+    width: 80vw;
+    height: 80vh;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+    z-index: 999;
+    overflow-y: auto;
 }

@@ -15,12 +15,45 @@ document.addEventListener('DOMContentLoaded', function() {
         ideaModal.show();
     });
 
-    document.getElementById('saveIdea').addEventListener('click', function() {
+    document.getElementById('saveIdea').addEventListener('click', async function() {
         const ideaInput = document.getElementById('ideaInput');
-        const ideaText = ideaInput.value.trim();
-        console.log('Save idea clicked:', { ideaText, position: pendingIdeaPosition });
+        const inputText = ideaInput.value.trim();
+        console.log('Save idea clicked:', { inputText, position: pendingIdeaPosition });
         
-        if (ideaText && pendingIdeaPosition) {
+        if (inputText && pendingIdeaPosition) {
+            // Check if input is a URL
+            let ideaText = inputText;
+            if (inputText.startsWith('http')) {
+                try {
+                    const saveButton = document.getElementById('saveIdea');
+                    const originalText = saveButton.textContent;
+                    saveButton.textContent = 'Hämtar innehåll...';
+                    saveButton.disabled = true;
+
+                    const response = await fetch('/fetch-url-content', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ url: inputText })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to fetch URL content');
+                    
+                    const data = await response.json();
+                    if (data.content) {
+                        ideaText = data.content;
+                    }
+                } catch (error) {
+                    console.error('Error fetching URL:', error);
+                    // Keep original URL as text if fetch fails
+                } finally {
+                    const saveButton = document.getElementById('saveIdea');
+                    saveButton.textContent = 'Spara';
+                    saveButton.disabled = false;
+                }
+            }
+
             const newIdea = ideaManager.addIdea(
                 pendingIdeaPosition.x,
                 pendingIdeaPosition.y,
@@ -41,58 +74,6 @@ document.addEventListener('DOMContentLoaded', function() {
         ideaManager.clearWorkspace();
     });
 
-    combineIdeasBtn.addEventListener('click', function() {
-        if (ideaManager.isSelectMode) {
-            if (ideaManager.selectedIdeas.length === 2) {
-                const idea1 = ideaManager.selectedIdeas[0];
-                const idea2 = ideaManager.selectedIdeas[1];
-                
-                // Add generating class to both ideas
-                idea1.element.classList.add('generating');
-                idea2.element.classList.add('generating');
-                
-                fetch('/generate-ideas', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        idea: `Combine these two ideas: 1. ${idea1.text} 2. ${idea2.text}`
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const combinedIdeas = JSON.parse(data.data).ideas;
-                        const x1 = parseInt(idea1.element.style.left);
-                        const y1 = parseInt(idea1.element.style.top);
-                        const x2 = parseInt(idea2.element.style.left);
-                        const y2 = parseInt(idea2.element.style.top);
-                        const midX = (x1 + x2) / 2;
-                        const midY = (y1 + y2) / 2;
-                        
-                        const newIdea = ideaManager.addIdea(midX, midY, combinedIdeas[0].text, false, true);
-                        ideaManager.connectIdeas(idea1, newIdea);
-                        ideaManager.connectIdeas(idea2, newIdea);
-                    }
-                })
-                .finally(() => {
-                    // Remove generating class from both ideas
-                    idea1.element.classList.remove('generating');
-                    idea2.element.classList.remove('generating');
-                });
-            }
-            ideaManager.exitSelectMode();
-            combineIdeasBtn.textContent = 'Kombinera idéer';
-            combineIdeasBtn.classList.remove('btn-secondary');
-            combineIdeasBtn.classList.add('btn-outline-primary');
-        } else {
-            ideaManager.enterSelectMode();
-            combineIdeasBtn.textContent = 'Avsluta val';
-            combineIdeasBtn.classList.remove('btn-outline-primary');
-            combineIdeasBtn.classList.add('btn-secondary');
-        }
-    });
 
     startTimerBtn.addEventListener('click', function() {
         if (ideaManager.timer) {
