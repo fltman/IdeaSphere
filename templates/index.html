@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="ideas-history">
+    <button id="toggleHistory" class="btn btn-sm btn-outline-secondary">Hide History</button>
+    <div id="historyContent" class="ideas-history">
         <h3>Recent Ideas</h3>
         <ul id="ideas-list"></ul>
     </div>

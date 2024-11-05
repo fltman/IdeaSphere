@@ -14,7 +14,7 @@ class IdeaManager {
         this.generatedIdeas = [];
         this.maxHistoryItems = 10;
         this.timer = null;
-        this.timerDuration = 5 * 60 * 1000;
+        this.timerDuration = 5 * 1000;
         this.remainingTime = this.timerDuration;
         this.isTimerPaused = false;
         this.countdownDisplay = document.getElementById('countdownDisplay');
@@ -29,6 +29,9 @@ class IdeaManager {
         window.addEventListener('resize', () => {
             this.drawConnections();
         });
+
+        // Add toggle functionality for ideas history
+        this.setupHistoryToggle();
     }
 
     setupEventListeners() {
@@ -85,29 +88,63 @@ class IdeaManager {
     }
 
     updateCountdownDisplay() {
-        if (!this.countdownDisplay) return;
+        if (!this.timerEndTime) return;
         
-        if (!this.timer) {
-            this.countdownDisplay.textContent = '';
-            return;
+        const timeLeft = Math.max(0, this.remainingTime);
+        const seconds = Math.floor(timeLeft / 1000);
+        
+        if (this.countdownDisplay) {
+            this.countdownDisplay.textContent = seconds.toString();
         }
-        
-        const minutes = Math.floor(this.remainingTime / 60000);
-        const seconds = Math.floor((this.remainingTime % 60000) / 1000);
-        this.countdownDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    handleTimerExpired() {
+        // Get all visible idea balls
+        const visibleIdeas = Array.from(this.ideas).filter(idea => 
+            !idea.element.classList.contains('generating') && 
+            idea.element.style.display !== 'none'
+        );
+
+        if (visibleIdeas.length >= 2) {
+            // Randomly select two different ideas
+            const idea1 = visibleIdeas[Math.floor(Math.random() * visibleIdeas.length)];
+            let idea2;
+            do {
+                idea2 = visibleIdeas[Math.floor(Math.random() * visibleIdeas.length)];
+            } while (idea2 === idea1);
+
+            // Select both ideas for merging
+            this.mergeIdeas = [idea1, idea2];
+            
+            // Add visual indication
+            idea1.element.classList.add('merge-mode');
+            idea2.element.classList.add('merge-mode');
+            
+            // Trigger the merge
+            this.handleMerge();
+        }
+
+        // Restart the timer
+        this.startTimer();
     }
 
     startTimer() {
-        if (this.timer) return;
+        if (this.timer) {
+            clearInterval(this.timer);
+        }
         
-        const startTime = Date.now() - (this.timerDuration - this.remainingTime);
+        this.timerEndTime = Date.now() + this.timerDuration;
+        this.remainingTime = this.timerDuration;
+        
         this.timer = setInterval(() => {
             if (!this.isTimerPaused) {
-                const elapsedTime = Date.now() - startTime;
-                this.remainingTime = Math.max(0, this.timerDuration - elapsedTime);
+                const now = Date.now();
+                const timeLeft = Math.max(0, this.timerEndTime - now);
+                this.remainingTime = timeLeft;
+                
                 this.updateCountdownDisplay();
                 
-                if (this.remainingTime === 0) {
+                if (timeLeft === 0) {
                     this.handleTimerExpired();
                 }
             }
@@ -122,18 +159,23 @@ class IdeaManager {
 
     resumeTimer() {
         this.isTimerPaused = false;
+        if (this.timer) {
+            this.timerEndTime = Date.now() + this.remainingTime;
+        }
     }
 
     stopTimer() {
         if (this.timer) {
             clearInterval(this.timer);
             this.timer = null;
+            this.timerEndTime = null;
+            this.remainingTime = this.timerDuration;
             this.updateCountdownDisplay();
         }
     }
 
-    setTimerDuration(minutes) {
-        this.timerDuration = minutes * 60 * 1000;
+    setTimerDuration(seconds) {
+        this.timerDuration = seconds * 1000;
         this.remainingTime = this.timerDuration;
         this.updateCountdownDisplay();
     }
@@ -158,8 +200,9 @@ class IdeaManager {
     }
 
     updatePhysics(deltaTime) {
-        const damping = 0.98;
-        const minSpeed = 0.1;
+        const damping = 0.95;
+        const minSpeed = 0.2;
+        const leftBoundary = 950; // Width of the ideas list area
 
         for (const idea of this.ideas) {
             if (!this.isDragging || idea.element !== this.selectedIdea) {
@@ -171,26 +214,24 @@ class IdeaManager {
                 let x = parseInt(idea.element.style.left) + velocity.x * deltaTime;
                 let y = parseInt(idea.element.style.top) + velocity.y * deltaTime;
 
-                const radius = rect.width / 2;
-                const minX = radius;
-                const maxX = this.workspace.clientWidth - radius;
-                const minY = radius;
-                const maxY = this.workspace.clientHeight - radius;
-
-                if (x < minX) {
-                    x = minX;
-                    velocity.x = Math.abs(velocity.x);
-                } else if (x > maxX) {
-                    x = maxX;
-                    velocity.x = -Math.abs(velocity.x);
+                // Check left boundary (ideas list width)
+                if (x < leftBoundary) {
+                    x = leftBoundary;
+                    velocity.x = -velocity.x; // Reverse direction
                 }
 
-                if (y < minY) {
-                    y = minY;
-                    velocity.y = Math.abs(velocity.y);
-                } else if (y > maxY) {
-                    y = maxY;
-                    velocity.y = -Math.abs(velocity.y);
+                // Check other boundaries
+                if (x > workspaceRect.width - rect.width) {
+                    x = workspaceRect.width - rect.width;
+                    velocity.x = -velocity.x;
+                }
+                if (y < 0) {
+                    y = 0;
+                    velocity.y = -velocity.y;
+                }
+                if (y > workspaceRect.height - rect.height) {
+                    y = workspaceRect.height - rect.height;
+                    velocity.y = -velocity.y;
                 }
 
                 velocity.x *= damping;
@@ -371,7 +412,7 @@ class IdeaManager {
         ideaBall.draggable = true;
 
         const generateBtn = document.createElement('button');
-        generateBtn.className = 'btn btn-sm generate-btn';
+        generateBtn.className = 'btn btn-sm generate-btn idea-button';
         generateBtn.innerHTML = '+';
         generateBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -380,7 +421,7 @@ class IdeaManager {
         ideaBall.appendChild(generateBtn);
 
         const infoBtn = document.createElement('button');
-        infoBtn.className = 'btn btn-sm info-btn';
+        infoBtn.className = 'btn btn-sm info-btn idea-button';
         infoBtn.innerHTML = 'i';
         infoBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -389,7 +430,7 @@ class IdeaManager {
         ideaBall.appendChild(infoBtn);
 
         const mergeBtn = document.createElement('button');
-        mergeBtn.className = 'btn btn-sm merge-btn';
+        mergeBtn.className = 'btn btn-sm merge-btn idea-button';
         mergeBtn.innerHTML = '⚡';
         mergeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -461,6 +502,8 @@ class IdeaManager {
     }
 
     async handleMerge() {
+        if (this.mergeIdeas.length !== 2) return;
+        
         const idea1 = this.mergeIdeas[0];
         const idea2 = this.mergeIdeas[1];
         
@@ -494,17 +537,14 @@ class IdeaManager {
                 
                 this.connectIdeas(idea1, newIdea);
                 this.connectIdeas(idea2, newIdea);
-                
-                this.mergeIdeas.forEach(idea => {
-                    idea.element.classList.remove('merge-mode');
-                });
-                this.mergeIdeas = [];
             }
         } catch (error) {
             console.error('Error merging ideas:', error);
         } finally {
-            idea1.element.classList.remove('generating');
-            idea2.element.classList.remove('generating');
+            // Clean up
+            idea1.element.classList.remove('generating', 'merge-mode');
+            idea2.element.classList.remove('generating', 'merge-mode');
+            this.mergeIdeas = [];
         }
     }
 
@@ -537,6 +577,20 @@ class IdeaManager {
     }
 
     showTooltip(ideaBall, text) {
+        // If there's an active tooltip and we're clicking the same idea ball
+        if (this.activeTooltip && this.activeTooltip._parentIdeaBall === ideaBall) {
+            this.activeTooltip.remove();
+            this.activeTooltip = null;
+            return;
+        }
+
+        // Remove any existing tooltip
+        if (this.activeTooltip) {
+            this.activeTooltip.remove();
+            this.activeTooltip = null;
+        }
+
+        // Create and show new tooltip
         const tooltip = document.createElement('div');
         tooltip.className = 'idea-tooltip';
         tooltip.textContent = text;
@@ -544,6 +598,22 @@ class IdeaManager {
         tooltip.style.left = '120%';
         tooltip.style.top = '50%';
         tooltip.style.transform = 'translateY(-50%)';
+        
+        // Store reference to parent idea ball
+        tooltip._parentIdeaBall = ideaBall;
+        
         ideaBall.appendChild(tooltip);
+        this.activeTooltip = tooltip;
+    }
+
+    setupHistoryToggle() {
+        const toggleBtn = document.getElementById('toggleHistory');
+        const historyContent = document.getElementById('historyContent');
+        
+        toggleBtn.addEventListener('click', () => {
+            const isVisible = historyContent.style.display !== 'none';
+            historyContent.style.display = isVisible ? 'none' : 'block';
+            toggleBtn.textContent = isVisible ? 'Show History' : 'Hide History';
+        });
     }
 }
