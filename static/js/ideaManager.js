@@ -21,6 +21,14 @@ class IdeaManager {
         this.velocities = new Map();
         this.lastFrameTime = performance.now();
         this.animationFrame = null;
+        this.currentRating = 0;
+
+        // Initialize the ideas list reference
+        this.ideasList = document.getElementById('ideas-list');
+        
+        if (!this.ideasList) {
+            console.warn('Ideas list element not found in the DOM');
+        }
 
         this.setupEventListeners();
         this.updateCountdownDisplay();
@@ -32,6 +40,7 @@ class IdeaManager {
 
         // Add toggle functionality for ideas history
         this.setupHistoryToggle();
+        this.setupRatingSystem();
     }
 
     setupEventListeners() {
@@ -404,6 +413,9 @@ class IdeaManager {
         ideaBall.style.left = `${x}px`;
         ideaBall.style.top = `${y}px`;
         
+        // Set default rating to 0
+        ideaBall.dataset.rating = "0";
+        
         const textContainer = document.createElement('div');
         textContainer.className = 'idea-ball-inner';
         textContainer.innerHTML = `<p class='idea-ball-text'>${text}</p>`;
@@ -438,12 +450,25 @@ class IdeaManager {
         });
         ideaBall.appendChild(mergeBtn);
 
+        const rateBtn = document.createElement('button');
+        rateBtn.className = 'btn btn-sm rate-btn idea-button';
+        rateBtn.innerHTML = '⭐';
+        rateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showRatingInterface(ideaBall);
+        });
+        ideaBall.appendChild(rateBtn);
+
+        const ratingDisplay = document.createElement('div');
+        ratingDisplay.className = 'idea-rating';
+        ideaBall.appendChild(ratingDisplay);
+
         this.setupDragListeners(ideaBall);
         
         this.workspace.appendChild(ideaBall);
         const idea = { element: ideaBall, text: text };
         this.ideas.push(idea);
-        this.addToHistory(text, true);
+        this.addToHistory(text);
         return idea;
     }
 
@@ -563,17 +588,12 @@ class IdeaManager {
     }
 
     addToHistory(text) {
-        const historyList = document.getElementById('ideas-list');
-        if (!historyList) return;
-        
-        const listItem = document.createElement('li');
-        listItem.textContent = text;
-        
-        if (historyList.children.length >= this.maxHistoryItems) {
-            historyList.removeChild(historyList.lastChild);
-        }
-        
-        historyList.insertBefore(listItem, historyList.firstChild);
+        // Check if ideas list exists before trying to use it
+        if (!this.ideasList) return;
+
+        const li = document.createElement('li');
+        li.textContent = text;
+        this.ideasList.insertBefore(li, this.ideasList.firstChild);
     }
 
     showTooltip(ideaBall, text) {
@@ -615,5 +635,174 @@ class IdeaManager {
             historyContent.style.display = isVisible ? 'none' : 'block';
             toggleBtn.textContent = isVisible ? 'Show History' : 'Hide History';
         });
+    }
+
+    setupRatingSystem() {
+        const stars = document.querySelectorAll('.star');
+        stars.forEach(star => {
+            star.addEventListener('click', (e) => {
+                const rating = parseInt(e.target.dataset.rating);
+                this.setRating(rating);
+            });
+        });
+    }
+
+    setRating(rating) {
+        this.currentRating = rating;
+        const stars = document.querySelectorAll('.star');
+        stars.forEach(star => {
+            const starRating = parseInt(star.dataset.rating);
+            star.classList.toggle('active', starRating <= rating);
+        });
+    }
+
+    resetModal() {
+        document.getElementById('ideaInput').value = '';
+        this.setRating(0);
+    }
+
+    createIdeaBall(text, x, y) {
+        const ideaBall = document.createElement('div');
+        ideaBall.className = 'idea-ball';
+        
+        const innerBall = document.createElement('div');
+        innerBall.className = 'idea-ball-inner';
+        
+        const textElement = document.createElement('p');
+        textElement.className = 'idea-ball-text';
+        textElement.textContent = text;
+        
+        // Add rating button
+        const rateBtn = document.createElement('button');
+        rateBtn.className = 'btn idea-button rate-btn';
+        rateBtn.innerHTML = '⭐';
+        rateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showRatingInterface(ideaBall);
+        });
+
+        // Add rating display
+        const ratingDisplay = document.createElement('div');
+        ratingDisplay.className = 'idea-rating';
+        ideaBall.dataset.rating = '0';
+        
+        innerBall.appendChild(textElement);
+        ideaBall.appendChild(innerBall);
+        ideaBall.appendChild(rateBtn);
+        ideaBall.appendChild(ratingDisplay);
+        
+        // ... rest of your existing ideaBall setup code ...
+        
+        return ideaBall;
+    }
+
+    showRatingInterface(ideaBall) {
+        const currentRating = parseInt(ideaBall.dataset.rating) || 0;
+        const previousRating = currentRating;
+        
+        // Create rating interface
+        const ratingInterface = document.createElement('div');
+        ratingInterface.className = 'star-rating';
+        ratingInterface.style.position = 'absolute';
+        ratingInterface.style.bottom = '-30px';
+        ratingInterface.style.left = '50%';
+        ratingInterface.style.transform = 'translateX(-50%)';
+        ratingInterface.style.background = 'rgba(0, 0, 0, 0.8)';
+        ratingInterface.style.padding = '5px 10px';
+        ratingInterface.style.borderRadius = '15px';
+        ratingInterface.style.whiteSpace = 'nowrap';
+        ratingInterface.style.display = 'flex';
+        ratingInterface.style.alignItems = 'center';
+        ratingInterface.style.gap = '10px';
+        
+        // Create stars container
+        const starsContainer = document.createElement('div');
+        starsContainer.style.display = 'flex';
+        starsContainer.style.gap = '5px';
+        
+        // Create zero-star option (outlined star)
+        const zeroStar = document.createElement('span');
+        zeroStar.className = 'star' + (currentRating === 0 ? ' active' : '');
+        zeroStar.textContent = '☆';  // Outlined star
+        zeroStar.style.cursor = 'pointer';
+        zeroStar.title = 'Reset to default';
+        zeroStar.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.setRating(ideaBall, 0);
+            ratingInterface.remove();
+        });
+        starsContainer.appendChild(zeroStar);
+        
+        // Create stars (1-3)
+        const titles = ['Bronze', 'Silver', 'Gold'];
+        for (let i = 1; i <= 3; i++) {
+            const star = document.createElement('span');
+            star.className = 'star' + (i <= currentRating ? ' active' : '');
+            star.textContent = '⭐';
+            star.style.cursor = 'pointer';
+            star.title = titles[i-1];
+            
+            star.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.setRating(ideaBall, i);
+                ratingInterface.remove();
+            });
+            
+            starsContainer.appendChild(star);
+        }
+        
+        // Add undo button
+        const undoButton = document.createElement('button');
+        undoButton.className = 'btn btn-sm btn-outline-secondary';
+        undoButton.innerHTML = '↩️';
+        undoButton.style.padding = '0px 5px';
+        undoButton.style.fontSize = '12px';
+        undoButton.title = 'Undo previous rating';
+        
+        undoButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.setRating(ideaBall, previousRating);
+            ratingInterface.remove();
+        });
+        
+        // Remove existing rating interface if any
+        const existingInterface = ideaBall.querySelector('.star-rating');
+        if (existingInterface) {
+            existingInterface.remove();
+        }
+        
+        // Append everything to the rating interface
+        ratingInterface.appendChild(starsContainer);
+        ratingInterface.appendChild(undoButton);
+        ideaBall.appendChild(ratingInterface);
+    }
+
+    setRating(ideaBall, rating) {
+        ideaBall.dataset.rating = rating;
+        
+        // Center the text within the potentially resized ball
+        const textContainer = ideaBall.querySelector('.idea-ball-inner');
+        if (textContainer) {
+            textContainer.style.width = '100%';
+            textContainer.style.height = '100%';
+            textContainer.style.display = 'flex';
+            textContainer.style.alignItems = 'center';
+            textContainer.style.justifyContent = 'center';
+        }
+    }
+
+    saveIdea() {
+        const ideaInput = document.getElementById('ideaInput');
+        const text = ideaInput.value.trim();
+        
+        if (text) {
+            const ideaBall = this.createIdeaBall(text, this.lastClickX, this.lastClickY);
+            this.workspace.appendChild(ideaBall);
+            this.ideaModal.hide();
+            this.resetModal();
+            
+            // Add to history with rating
+            this.addToHistory(text);
+        }
     }
 }

@@ -224,7 +224,6 @@ body::after {
     color: white;
     font-size: 14px;
     line-height: 1.2;
-    background: rgba(100, 149, 237, 0.85);
     border: 2px solid rgba(255, 255, 255, 0.3);
     box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.2);
 }
@@ -234,14 +233,19 @@ body::after {
 }
 
 .idea-ball.ai .idea-ball-inner {
-    background: rgba(152, 251, 152, 0.85);
-    color: #333;
+    background: linear-gradient(135deg,
+        rgba(128, 0, 128, 0.85),    /* Purple base */
+        rgba(147, 112, 219, 0.85),  /* Medium purple */
+        rgba(128, 0, 128, 0.85)     /* Purple base */
+    );
 }
 
 .idea-ball.combined .idea-ball-inner {
-    background: rgba(186, 85, 211, 0.85);
-    color: white;
-    border-color: rgba(255, 255, 255, 0.4);
+    background: linear-gradient(135deg,
+        rgba(139, 0, 0, 0.85),      /* Dark red base */
+        rgba(165, 42, 42, 0.85),    /* Wine red */
+        rgba(139, 0, 0, 0.85)       /* Dark red base */
+    );
 }
 
 .idea-ball.combined:hover .idea-ball-inner {
@@ -452,4 +456,115 @@ body::after {
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
     z-index: 999;
     overflow-y: auto;
+}
+
+.rate-btn {
+    background: transparent;
+    color: var(--bs-warning);
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.rate-btn:hover {
+    color: var(--bs-warning-hover);
+}
+
+.idea-rating {
+    position: absolute;
+    bottom: -45px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    white-space: nowrap;
+    color: var(--bs-warning);
+}
+
+/* Update existing idea-button styles to accommodate the new button */
+.idea-ball .idea-button {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.idea-ball:hover .idea-button {
+    opacity: 1;
+}
+
+.clear-rating {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.clear-rating:hover {
+    opacity: 1;
+}
+
+/* Update existing idea-ball styles */
+.idea-ball {
+    /* ... existing styles ... */
+    transition: all 0.3s ease;
+}
+
+/* Rating-based styles - these will override the base colors when rated */
+.idea-ball[data-rating="0"]:not(.ai):not(.combined) .idea-ball-inner {
+    background: rgba(100, 149, 237, 0.85);  /* Default cornflower blue for unrated main ideas */
+}
+
+.idea-ball[data-rating="1"] .idea-ball-inner {
+    background: linear-gradient(135deg, 
+        rgba(205, 127, 50, 0.9),     /* Bronze base */
+        rgba(236, 172, 88, 0.9),     /* Lighter bronze */
+        rgba(176, 99, 29, 0.9)       /* Darker bronze */
+    );
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.idea-ball[data-rating="2"] .idea-ball-inner {
+    background: linear-gradient(135deg, 
+        rgba(192, 192, 192, 0.9),    /* Silver base */
+        rgba(238, 238, 238, 0.9),    /* Lighter silver */
+        rgba(160, 160, 160, 0.9)     /* Darker silver */
+    );
+    color: #333;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.idea-ball[data-rating="3"] .idea-ball-inner {
+    background: linear-gradient(135deg, 
+        rgba(255, 215, 0, 0.9),      /* Gold base */
+        rgba(255, 236, 139, 0.9),    /* Lighter gold */
+        rgba(218, 165, 32, 0.9)      /* Darker gold */
+    );
+    color: #333;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+/* Add shine effect to rated balls */
+.idea-ball[data-rating="1"] .idea-ball-inner,
+.idea-ball[data-rating="2"] .idea-ball-inner,
+.idea-ball[data-rating="3"] .idea-ball-inner {
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 
+        inset 0 0 20px rgba(255, 255, 255, 0.5),
+        0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+/* Size changes */
+.idea-ball[data-rating="0"],
+.idea-ball[data-rating="1"] {
+    width: 100px;
+    height: 100px;
+}
+
+.idea-ball[data-rating="2"] {
+    width: 120px;
+    height: 120px;
+}
+
+.idea-ball[data-rating="3"] {
+    width: 140px;
+    height: 140px;
 }
