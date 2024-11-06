@@ -14,6 +14,15 @@
     <div id="settingsPane" class="settings-pane" style="display: none;">
         <h3>Settings</h3>
         <div class="mb-4">
+            <label class="form-label">System Prompt</label>
+            <textarea 
+                class="form-control" 
+                id="systemPrompt" 
+                rows="3"
+                placeholder="Set the AI's context and behavior">You are a creative AI assistant focused on generating innovative ideas and combinations.</textarea>
+            <small class="text-muted">This sets the overall context and behavior of the AI.</small>
+        </div>
+        <div class="mb-4">
             <label class="form-label">Combination Prompt</label>
             <textarea 
                 class="form-control" 
@@ -92,6 +101,7 @@
             fetch('/get-settings')
                 .then(response => response.json())
                 .then(settings => {
+                    document.getElementById('systemPrompt').value = settings.system_prompt;
                     document.getElementById('combinationPrompt').value = settings.combination_prompt;
                     document.getElementById('generationPrompt').value = settings.generation_prompt;
                 })
@@ -101,6 +111,7 @@
         // Save settings when the save button is clicked
         document.getElementById('saveSettings').addEventListener('click', function() {
             const settings = {
+                system_prompt: document.getElementById('systemPrompt').value,
                 combination_prompt: document.getElementById('combinationPrompt').value,
                 generation_prompt: document.getElementById('generationPrompt').value
             };

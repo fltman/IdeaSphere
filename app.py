@@ -50,7 +50,7 @@ def generate_ideas():
     
     try:
         print(f"Sending prompt: {prompt}")
-        response = send_openai_request(prompt)
+        response = send_openai_request(prompt, settings.get('system_prompt'))
         print(f"Received response: {response}")
         return jsonify({"success": True, "data": response})
     except Exception as e:
