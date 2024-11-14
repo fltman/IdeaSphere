@@ -5,11 +5,15 @@ import requests
 from bs4 import BeautifulSoup
 import urllib.parse
 
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "default_secret_key")
 
 # Add default settings
 DEFAULT_SETTINGS = {
+    "openai_api_key": "",
+    "openai_model": "gpt-4o-mini",
+    "system_prompt": "You are a brilliant inventor that generates ideas.",
     "combination_prompt": "Generate 1 possible combination, focusing on how these ideas could work together",
     "generation_prompt": "Generate 3 related ideas for the concept",
 }
@@ -50,7 +54,7 @@ def generate_ideas():
     
     try:
         print(f"Sending prompt: {prompt}")
-        response = send_openai_request(prompt, settings.get('system_prompt'))
+        response = send_openai_request(prompt, settings.get('system_prompt'), settings.get('openai_api_key'), settings.get('openai_model'))
         print(f"Received response: {response}")
         return jsonify({"success": True, "data": response})
     except Exception as e:

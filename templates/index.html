@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Idébyggare</title>
+    <title>Idea Builder</title>
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -11,8 +11,22 @@
     <button id="toggleHistory" class="btn btn-sm btn-outline-secondary">Hide History</button>
     <button id="toggleSettings" class="btn">⚙️</button>
     
-    <div id="settingsPane" class="settings-pane" style="display: none;">
+    <div id="settingsPane" class="settings-pane hidden">
         <h3>Settings</h3>
+        <div class="mb-4">
+            <label class="form-label">OpenAI API Key</label>
+            <input 
+                class="form-control" 
+                id="openaiApiKey" 
+                placeholder="Enter your OpenAI API key" type="password">
+        </div> 
+        <div class="mb-4">
+            <label class="form-label">OpenAI Model</label>
+            <input 
+                class="form-control" 
+                id="openaiModel" 
+                placeholder="gpt-4o-mini" type="text">
+        </div>
         <div class="mb-4">
             <label class="form-label">System Prompt</label>
             <textarea 
@@ -61,6 +75,7 @@
             <span id="countdownDisplay" class="countdown-display"></span>
         </div>
         <button id="clearCanvas" class="btn btn-outline-danger">Clear</button>
+        <small class="text-muted copyright">Idea Builder 2024 CC-BY Anders Bjarby</small>
     </div>
 
     <div class="modal fade" id="ideaModal" tabindex="-1">
@@ -85,7 +100,15 @@
     <script src="{{ url_for('static', filename='js/ideaBuilder.js') }}"></script>
     <script>
         document.getElementById('ideaModal').addEventListener('shown.bs.modal', function () {
-            document.getElementById('ideaInput').focus();
+            const ideaInput = document.getElementById('ideaInput');
+            ideaInput.focus();
+            
+            // Add this event listener for the Enter key
+            ideaInput.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    document.getElementById('saveIdea').click();
+                }
+            });
         });
 
         // Settings toggle functionality
@@ -93,8 +116,7 @@
         const settingsPane = document.getElementById('settingsPane');
         
         settingsBtn.addEventListener('click', function() {
-            const isVisible = settingsPane.style.display !== 'none';
-            settingsPane.style.display = isVisible ? 'none' : 'block';
+            settingsPane.classList.toggle('hidden');
             settingsBtn.classList.toggle('active');
         });
 
@@ -106,6 +128,8 @@
                     document.getElementById('systemPrompt').value = settings.system_prompt;
                     document.getElementById('combinationPrompt').value = settings.combination_prompt;
                     document.getElementById('generationPrompt').value = settings.generation_prompt;
+                    document.getElementById('openaiApiKey').value = settings.openai_api_key;
+                    document.getElementById('openaiModel').value = settings.openai_model;
                 })
                 .catch(error => console.error('Error loading settings:', error));
         });
@@ -115,7 +139,9 @@
             const settings = {
                 system_prompt: document.getElementById('systemPrompt').value,
                 combination_prompt: document.getElementById('combinationPrompt').value,
-                generation_prompt: document.getElementById('generationPrompt').value
+                generation_prompt: document.getElementById('generationPrompt').value,
+                openai_api_key: document.getElementById('openaiApiKey').value,
+                openai_model: document.getElementById('openaiModel').value
             };
 
             fetch('/update-settings', {

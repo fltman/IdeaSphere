@@ -209,48 +209,45 @@ class IdeaManager {
     }
 
     updatePhysics(deltaTime) {
-        const damping = 0.95;
-        const minSpeed = 0.2;
-        const leftBoundary = 950; // Width of the ideas list area
+        const damping = 0.85;
+        const minSpeed = 0.5;
+        const leftBoundary = 950;
 
         for (const idea of this.ideas) {
             if (!this.isDragging || idea.element !== this.selectedIdea) {
                 let velocity = this.velocities.get(idea) || { x: 0, y: 0 };
                 
-                const rect = idea.element.getBoundingClientRect();
-                const workspaceRect = this.workspace.getBoundingClientRect();
-                
+                velocity.x *= Math.abs(velocity.x) > 10 ? 0.8 : damping;
+                velocity.y *= Math.abs(velocity.y) > 10 ? 0.8 : damping;
+
                 let x = parseInt(idea.element.style.left) + velocity.x * deltaTime;
                 let y = parseInt(idea.element.style.top) + velocity.y * deltaTime;
 
-                // Check left boundary (ideas list width)
                 if (x < leftBoundary) {
                     x = leftBoundary;
-                    velocity.x = -velocity.x; // Reverse direction
+                    velocity.x = -velocity.x;
                 }
 
-                // Check other boundaries
-                if (x > workspaceRect.width - rect.width) {
-                    x = workspaceRect.width - rect.width;
+                if (x > this.workspace.clientWidth - idea.element.clientWidth) {
+                    x = this.workspace.clientWidth - idea.element.clientWidth;
                     velocity.x = -velocity.x;
                 }
                 if (y < 0) {
                     y = 0;
                     velocity.y = -velocity.y;
                 }
-                if (y > workspaceRect.height - rect.height) {
-                    y = workspaceRect.height - rect.height;
+                if (y > this.workspace.clientHeight - idea.element.clientHeight) {
+                    y = this.workspace.clientHeight - idea.element.clientHeight;
                     velocity.y = -velocity.y;
                 }
-
-                velocity.x *= damping;
-                velocity.y *= damping;
 
                 if (Math.abs(velocity.x) < minSpeed) velocity.x = 0;
                 if (Math.abs(velocity.y) < minSpeed) velocity.y = 0;
 
-                idea.element.style.left = `${x}px`;
-                idea.element.style.top = `${y}px`;
+                requestAnimationFrame(() => {
+                    idea.element.style.left = `${x}px`;
+                    idea.element.style.top = `${y}px`;
+                });
                 this.velocities.set(idea, velocity);
             }
         }
@@ -281,30 +278,21 @@ class IdeaManager {
                 if (distance < minDistance) {
                     const angle = Math.atan2(dy, dx);
                     
-                    // Get current velocities for both ideas
-                    const vel1 = this.velocities.get(idea1) || { x: 0, y: 0 };
-                    const vel2 = this.velocities.get(idea2) || { x: 0, y: 0 };
-                    
-                    // Calculate current speeds
-                    const speed1 = Math.sqrt(vel1.x * vel1.x + vel1.y * vel1.y);
-                    const speed2 = Math.sqrt(vel2.x * vel2.x + vel2.y * vel2.y);
-                    
-                    // Use maximum of current speeds or minimum repulsion speed
-                    const speed = Math.max(speed1, speed2, 100);
+                    const speed = 30;
                     
                     const newVel1 = {
-                        x: -speed * Math.cos(angle),
-                        y: -speed * Math.sin(angle)
+                        x: -speed * Math.cos(angle) * 0.3,
+                        y: -speed * Math.sin(angle) * 0.3
                     };
                     const newVel2 = {
-                        x: speed * Math.cos(angle),
-                        y: speed * Math.sin(angle)
+                        x: speed * Math.cos(angle) * 0.3,
+                        y: speed * Math.sin(angle) * 0.3
                     };
                     
                     this.velocities.set(idea1, newVel1);
                     this.velocities.set(idea2, newVel2);
 
-                    const overlap = minDistance - distance;
+                    const overlap = (minDistance - distance) * 0.5;
                     const separationX = (overlap * dx) / distance / 2;
                     const separationY = (overlap * dy) / distance / 2;
 
@@ -344,18 +332,19 @@ class IdeaManager {
         ideaBall.addEventListener('drag', (e) => {
             if (this.isSelectMode || e.clientX === 0 && e.clientY === 0) return;
             
-            const rect = this.workspace.getBoundingClientRect();
-            const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
-            const y = e.clientY - rect.top + this.workspace.scrollTop - this.dragStartPos.y;
-            
-            const minPadding = 120;
-            const boundedX = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
-            const boundedY = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
-            
-            ideaBall.style.transform = 'translate(0, 0)';
-            ideaBall.style.left = `${boundedX}px`;
-            ideaBall.style.top = `${boundedY}px`;
-            this.drawConnections();
+            requestAnimationFrame(() => {
+                const rect = this.workspace.getBoundingClientRect();
+                const x = e.clientX - rect.left + this.workspace.scrollLeft - this.dragStartPos.x;
+                const y = e.clientY - rect.top + this.workspace.scrollTop - this.dragStartPos.y;
+                
+                const minPadding = 120;
+                const boundedX = Math.max(minPadding, Math.min(x, this.workspace.clientWidth - minPadding));
+                const boundedY = Math.max(minPadding, Math.min(y, this.workspace.clientHeight - minPadding));
+                
+                ideaBall.style.left = `${boundedX}px`;
+                ideaBall.style.top = `${boundedY}px`;
+                this.drawConnections();
+            });
         });
 
         ideaBall.addEventListener('dragend', (e) => {
@@ -628,11 +617,11 @@ class IdeaManager {
 
     setupHistoryToggle() {
         const toggleBtn = document.getElementById('toggleHistory');
-        const historyContent = document.getElementById('historyContent');
+        const historyContent = document.querySelector('.ideas-history');
         
         toggleBtn.addEventListener('click', () => {
-            const isVisible = historyContent.style.display !== 'none';
-            historyContent.style.display = isVisible ? 'none' : 'block';
+            const isVisible = !historyContent.classList.contains('hidden');
+            historyContent.classList.toggle('hidden');
             toggleBtn.textContent = isVisible ? 'Show History' : 'Hide History';
         });
     }
