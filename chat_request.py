@@ -1,14 +1,11 @@
 import os
 from openai import OpenAI
 
-openai_client = None
-
 def send_openai_request(prompt, system_prompt=None, openai_api_key=None, openai_model=None):
     global openai_client
     
     try:
-        if not openai_client:
-            openai_client = OpenAI(api_key=openai_api_key)
+        openai_client = OpenAI(api_key=openai_api_key)
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})

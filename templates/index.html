@@ -130,6 +130,11 @@
                     document.getElementById('generationPrompt').value = settings.generation_prompt;
                     document.getElementById('openaiApiKey').value = settings.openai_api_key;
                     document.getElementById('openaiModel').value = settings.openai_model;
+                    if(settings.openai_api_key == "") {
+                        settingsPane.classList.toggle('hidden');
+                        settingsBtn.classList.toggle('active');
+                        document.getElementById('openaiApiKey').focus();
+                    }
                 })
                 .catch(error => console.error('Error loading settings:', error));
         });
