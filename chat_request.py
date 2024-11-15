@@ -2,9 +2,9 @@ import os
 from openai import OpenAI
 
 def send_openai_request(prompt, system_prompt=None, openai_api_key=None, openai_model=None):
-    global openai_client
     
     try:
+        print(f"openai_api_key: {openai_api_key}")
         openai_client = OpenAI(api_key=openai_api_key)
         messages = []
         if system_prompt:
