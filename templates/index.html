@@ -66,6 +66,15 @@
 
     <div id="historyContent" class="ideas-history">
         <h3>Ideas History</h3>
+        <div class="history-controls">
+            <button id="exportIdeas" class="btn btn-sm btn-outline-secondary">Export Ideas</button>
+            <select id="exportFormat" class="form-select form-select-sm">
+                <option value="txt">Text (.txt)</option>
+                <option value="json">JSON (.json)</option>
+                <option value="md">Markdown (.md)</option>
+                <option value="csv">CSV (.csv)</option>
+            </select>
+        </div>
         <ul id="ideas-list">
             <!-- Ideas will be added here -->
         </ul>

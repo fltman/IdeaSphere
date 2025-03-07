@@ -654,3 +654,24 @@ body::after {
     z-index: 1000;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
 }
+
+.history-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.history-controls button {
+    margin-right: 8px;
+}
+
+.history-controls .form-select {
+    width: auto;
+    max-width: 150px;
+    background-color: #343a40;
+    color: #fff;
+    border-color: #495057;
+}

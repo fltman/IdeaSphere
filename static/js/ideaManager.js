@@ -47,6 +47,9 @@ class IdeaManager {
         
         // Add project-related event listeners
         this.setupProjectEventListeners();
+
+        // Add export functionality
+        this.setupExportFeature();
     }
 
     setupEventListeners() {
@@ -1280,5 +1283,68 @@ class IdeaManager {
                 });
             }
         });
+    }
+
+    // Add this method to the class
+    setupExportFeature() {
+        const exportButton = document.getElementById('exportIdeas');
+        const formatSelector = document.getElementById('exportFormat');
+        
+        if (!exportButton || !formatSelector) {
+            console.warn('Export controls not found in the DOM');
+            return;
+        }
+        
+        exportButton.addEventListener('click', () => {
+            this.exportIdeas(formatSelector.value);
+        });
+    }
+
+    // Add this method to export ideas
+    exportIdeas(format = 'txt') {
+        const projectId = this.currentProjectId || (window.projectManager ? window.projectManager.getCurrentProjectId() : null);
+        
+        if (!projectId) {
+            alert('Please select a project before exporting ideas');
+            return;
+        }
+        
+        // Get project name for display
+        const projectName = window.projectManager ? 
+            window.projectManager.getProjectName(projectId) : 
+            'Ideas';
+        
+        // Show loading state
+        const exportBtn = document.getElementById('exportIdeas');
+        const originalText = exportBtn.textContent;
+        exportBtn.textContent = 'Exporting...';
+        exportBtn.disabled = true;
+        
+        try {
+            // Create export URL - ensure it has the correct path
+            const exportUrl = `/export-ideas?project_id=${projectId}&format=${format}`;
+            
+            console.log('Export URL:', exportUrl); // Debug log
+            
+            // Create a temporary link and trigger download
+            const link = document.createElement('a');
+            link.href = exportUrl;
+            link.setAttribute('download', `${projectName}_ideas.${format}`);
+            link.setAttribute('target', '_blank');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            console.log(`Exported ideas in ${format} format`);
+        } catch (error) {
+            console.error('Error exporting ideas:', error);
+            alert('Failed to export ideas. Please try again.');
+        } finally {
+            // Reset button state
+            setTimeout(() => {
+                exportBtn.textContent = originalText;
+                exportBtn.disabled = false;
+            }, 1000);
+        }
     }
 }

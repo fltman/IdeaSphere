@@ -1,11 +1,12 @@
 import os
-from flask import Flask, render_template, jsonify, request, session
+from flask import Flask, render_template, jsonify, request, session, make_response
 from chat_request import send_openai_request
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import json
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "default_secret_key")
@@ -355,4 +356,76 @@ def get_connections():
             "connections": [connection.to_dict() for connection in connections]
         })
     except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/export-ideas', methods=['GET'])
+def export_ideas():
+    project_id = request.args.get('project_id')
+    export_format = request.args.get('format', 'txt')
+    
+    if not project_id:
+        return jsonify({"success": False, "error": "Project ID is required"}), 400
+    
+    try:
+        # Get all ideas for the project
+        ideas = Idea.query.filter_by(project_id=project_id).order_by(Idea.created_at.asc()).all()
+        project = Project.query.get(project_id)
+        
+        if not project:
+            return jsonify({"success": False, "error": "Project not found"}), 404
+        
+        # Format the data according to the requested format
+        if export_format == 'json':
+            # JSON format
+            data = {
+                "project": project.to_dict(),
+                "ideas": [idea.to_dict() for idea in ideas]
+            }
+            output = json.dumps(data, indent=2)
+            mimetype = 'application/json'
+            filename = f"{project.name.replace(' ', '_')}_ideas.json"
+        
+        elif export_format == 'csv':
+            # CSV format
+            output = "Idea,Created At\n"
+            for idea in ideas:
+                # Replace newlines and commas in text to avoid breaking CSV format
+                safe_text = idea.text.replace('\n', ' ').replace(',', ';')
+                output += f'"{safe_text}",{idea.created_at.isoformat()}\n'
+            mimetype = 'text/csv'
+            filename = f"{project.name.replace(' ', '_')}_ideas.csv"
+        
+        elif export_format == 'md':
+            # Markdown format
+            output = f"# {project.name} - Ideas\n\n"
+            output += f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            
+            # Add each idea as a markdown list item
+            for i, idea in enumerate(ideas):
+                output += f"## Idea {i+1}\n\n{idea.text}\n\n"
+            
+            mimetype = 'text/markdown'
+            filename = f"{project.name.replace(' ', '_')}_ideas.md"
+        
+        else:
+            # Default to plain text
+            output = f"{project.name} - Ideas\n\n"
+            output += f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            
+            # Add each idea with a separator
+            for i, idea in enumerate(ideas):
+                output += f"--- Idea {i+1} ---\n{idea.text}\n\n"
+            
+            mimetype = 'text/plain'
+            filename = f"{project.name.replace(' ', '_')}_ideas.txt"
+        
+        # Create a response with the file content
+        response = make_response(output)
+        response.headers['Content-Type'] = mimetype
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error exporting ideas: {str(e)}")  # Add logging
         return jsonify({"success": False, "error": str(e)}), 500

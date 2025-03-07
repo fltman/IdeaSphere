@@ -154,6 +154,11 @@ class ProjectManager {
     getCurrentProjectId() {
         return this.currentProjectId;
     }
+    
+    getProjectName(projectId) {
+        const project = this.projects.find(p => p.id === parseInt(projectId));
+        return project ? project.name : 'Unknown Project';
+    }
 }
 
 // Initialize the project manager when the document is ready
