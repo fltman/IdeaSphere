@@ -22,6 +22,9 @@ class IdeaManager {
         this.lastFrameTime = performance.now();
         this.animationFrame = null;
         this.currentRating = 0;
+        // Project-specific history storage
+        this.ideaHistoryByProject = new Map();
+        this.currentProjectId = null;
 
         // Initialize the ideas list reference
         this.ideasList = document.getElementById('ideas-list');
@@ -41,6 +44,9 @@ class IdeaManager {
         // Add toggle functionality for ideas history
         this.setupHistoryToggle();
         this.setupRatingSystem();
+        
+        // Add project-related event listeners
+        this.setupProjectEventListeners();
     }
 
     setupEventListeners() {
@@ -360,6 +366,15 @@ class IdeaManager {
                         x: deltaX * 5,
                         y: deltaY * 5
                     });
+                    
+                    // Update the idea's coordinates for database persistence
+                    idea.x = parseFloat(ideaBall.style.left);
+                    idea.y = parseFloat(ideaBall.style.top);
+                    
+                    // Update in database if the idea has an ID
+                    if (idea.id) {
+                        this.updateIdeaPosition(idea, idea.x, idea.y);
+                    }
                 }
             }
             this.isDragging = false;
@@ -371,32 +386,179 @@ class IdeaManager {
         const canvas = document.getElementById('connections-canvas');
         const ctx = canvas.getContext('2d');
         
+        // Set canvas size to match workspace size
         canvas.width = this.workspace.scrollWidth;
         canvas.height = this.workspace.scrollHeight;
         
+        // Clear the canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.lineWidth = 2;
-        
+        // Draw each connection
         this.connections.forEach(conn => {
-            const fromRect = conn.from.element.getBoundingClientRect();
-            const toRect = conn.to.element.getBoundingClientRect();
+            // Support both formats and get the ideas for the connection
+            const fromIdea = conn.from || conn.source;
+            const toIdea = conn.to || conn.target;
+            
+            if (!fromIdea || !toIdea) {
+                console.warn('Invalid connection - missing from/to ideas:', conn);
+                return;
+            }
+            
+            if (!fromIdea.element || !toIdea.element) {
+                console.warn('Invalid connection - missing DOM elements:', conn);
+                return;
+            }
+            
+            // Get element positions
+            const fromRect = fromIdea.element.getBoundingClientRect();
+            const toRect = toIdea.element.getBoundingClientRect();
             const workspaceRect = this.workspace.getBoundingClientRect();
             
+            // Calculate center points with scroll offset
             const fromX = fromRect.left - workspaceRect.left + this.workspace.scrollLeft + fromRect.width/2;
             const fromY = fromRect.top - workspaceRect.top + this.workspace.scrollTop + fromRect.height/2;
             const toX = toRect.left - workspaceRect.left + this.workspace.scrollLeft + toRect.width/2;
             const toY = toRect.top - workspaceRect.top + this.workspace.scrollTop + toRect.height/2;
             
+            // Set line style based on pending status
+            if (conn.pending) {
+                // Dashed line for pending connections
+                ctx.setLineDash([5, 3]);
+                ctx.strokeStyle = 'rgba(255, 200, 0, 0.6)';
+            } else {
+                // Solid line for saved connections
+                ctx.setLineDash([]);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            }
+            
+            // Draw connection line
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(fromX, fromY);
             ctx.lineTo(toX, toY);
             ctx.stroke();
+            
+            // Add a subtle glow effect
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+            
+            // Reset line dash for other operations
+            ctx.setLineDash([]);
+            
+            // Draw arrow indicator
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            const arrowLength = 8;
+            const arrowWidth = 4;
+            
+            // Arrow endpoint is a bit before the actual endpoint
+            const endX = toX - 10 * Math.cos(angle);
+            const endY = toY - 10 * Math.sin(angle);
+            
+            // Draw arrow head
+            ctx.fillStyle = conn.pending ? 'rgba(255, 200, 0, 0.6)' : 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(
+                endX - arrowLength * Math.cos(angle - Math.PI/arrowWidth),
+                endY - arrowLength * Math.sin(angle - Math.PI/arrowWidth)
+            );
+            ctx.lineTo(
+                endX - arrowLength * Math.cos(angle + Math.PI/arrowWidth),
+                endY - arrowLength * Math.sin(angle + Math.PI/arrowWidth)
+            );
+            ctx.closePath();
+            ctx.fill();
         });
     }
 
-    addIdea(x, y, text, isAIGenerated = false, isCombined = false) {
+    setupProjectEventListeners() {
+        // Listen for the load-ideas event
+        document.addEventListener('load-ideas', (e) => {
+            const ideas = e.detail.ideas;
+            if (ideas && ideas.length > 0) {
+                this.loadIdeasFromDatabase(ideas);
+            }
+        });
+        
+        // Listen for the clear-workspace event
+        document.addEventListener('clear-workspace', () => {
+            this.clearWorkspace();
+        });
+        
+        // Listen for project-selected event
+        document.addEventListener('project-selected', (e) => {
+            const projectId = e.detail.projectId;
+            if (projectId) {
+                // Update current project ID
+                this.currentProjectId = projectId;
+                
+                // Update the history panel to show only this project's history
+                this.updateHistoryPanel();
+                
+                console.log(`Switched to project ID: ${projectId}`);
+            }
+        });
+    }
+    
+    loadIdeasFromDatabase(ideas) {
+        // Clear existing ideas first
+        this.clearWorkspace();
+        
+        // Get the current project ID
+        this.currentProjectId = window.projectManager ? window.projectManager.getCurrentProjectId() : null;
+        
+        if (!this.currentProjectId) {
+            console.warn('Cannot load ideas: No project selected');
+            return;
+        }
+        
+        // Store idea IDs for reference
+        const loadedIdeasById = new Map();
+        
+        // Add each idea from the database
+        ideas.forEach(idea => {
+            const newIdea = this.addIdeaFromDatabase(
+                idea.x_position, 
+                idea.y_position, 
+                idea.text,
+                idea.id
+            );
+            
+            // Store the idea by ID for connection reference
+            if (newIdea && idea.id) {
+                loadedIdeasById.set(idea.id, newIdea);
+            }
+        });
+
+        // After all ideas are loaded, now load connections
+        this.loadConnectionsFromDatabase(loadedIdeasById);
+        
+        // Update history panel for this project
+        this.updateHistoryPanel();
+    }
+    
+    addIdeaFromDatabase(x, y, text, id) {
+        // Create idea element using the existing addIdea method
+        const idea = this.addIdea(x, y, text, false, false, true); // skipSave = true
+        
+        // Set the database ID
+        if (idea) {
+            idea.id = id;
+            console.log(`Added idea from database with ID ${id}:`, idea); // Debug log
+            
+            // Add to project history when loaded from database
+            this.addToHistory(text, this.currentProjectId);
+        }
+        
+        return idea;
+    }
+
+    addIdea(x, y, text, isAIGenerated = false, isCombined = false, skipSave = false) {
+        // Create the idea with existing functionality
         const ideaBall = document.createElement('div');
         ideaBall.className = `idea-ball ${isAIGenerated ? 'ai' : 'main'} ${isCombined ? 'combined' : ''}`;
         ideaBall.style.left = `${x}px`;
@@ -410,6 +572,7 @@ class IdeaManager {
         textContainer.innerHTML = `<p class='idea-ball-text'>${text}</p>`;
         ideaBall.appendChild(textContainer);
         
+        // Ensure draggable is set
         ideaBall.draggable = true;
 
         const generateBtn = document.createElement('button');
@@ -455,10 +618,63 @@ class IdeaManager {
         this.setupDragListeners(ideaBall);
         
         this.workspace.appendChild(ideaBall);
-        const idea = { element: ideaBall, text: text };
+        const idea = { element: ideaBall, text: text, x: x, y: y };
         this.ideas.push(idea);
         this.addToHistory(text);
+        
+        // Save to database if a project is selected and skipSave is false
+        if (!skipSave) {
+            this.saveIdeaToDatabase(idea)
+                .then(savedIdea => {
+                    if (savedIdea) {
+                        idea.id = savedIdea.id; // Update with the ID from the database
+                        console.log(`Saved idea to database, assigned ID ${savedIdea.id}:`, idea); // Debug log
+                        
+                        // Check if there are any pending connections for this idea
+                        this.retryPendingConnections();
+                    }
+                });
+        }
+        
         return idea;
+    }
+    
+    async saveIdeaToDatabase(idea) {
+        // Get the current project ID
+        const projectId = window.projectManager ? window.projectManager.getCurrentProjectId() : null;
+        
+        if (!projectId) {
+            console.warn('Not saving idea to database: No project selected');
+            return null;
+        }
+        
+        try {
+            const response = await fetch('/save-idea', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: idea.text,
+                    project_id: projectId,
+                    x_position: parseFloat(idea.element.style.left),
+                    y_position: parseFloat(idea.element.style.top)
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                idea.id = data.idea.id; // Update with the ID from the database
+                return data.idea;
+            } else {
+                console.error('Failed to save idea:', data.error);
+                return null;
+            }
+        } catch (error) {
+            console.error('Error saving idea:', error);
+            return null;
+        }
     }
 
     async handleGenerateClick(ideaBall, text) {
@@ -534,7 +750,7 @@ class IdeaManager {
                     idea: `Combine these two ideas: 1. ${idea1.text} 2. ${idea2.text}`
                 })
             });
-
+            
             const data = await response.json();
             
             if (data.success) {
@@ -547,10 +763,15 @@ class IdeaManager {
                 const midX = (x1 + x2) / 2;
                 const midY = (y1 + y2) / 2;
                 
+                // Create the new combined idea
                 const newIdea = this.addIdea(midX, midY, combinedIdeas[0].text, false, true);
                 
+                // We need to wait for the new idea to get an ID before connecting it
+                // The connectIdeas method now handles pending connections internally
                 this.connectIdeas(idea1, newIdea);
                 this.connectIdeas(idea2, newIdea);
+                
+                console.log('Created new combined idea:', newIdea);
             }
         } catch (error) {
             console.error('Error merging ideas:', error);
@@ -563,26 +784,140 @@ class IdeaManager {
     }
 
     connectIdeas(idea1, idea2) {
-        this.connections.push({ from: idea1, to: idea2 });
-        this.drawConnections();
+        // First, check if both ideas have IDs (necessary for database persistence)
+        if (!idea1.id || !idea2.id) {
+            console.warn('Cannot connect ideas: One or both ideas missing database ID');
+            console.log('Idea 1:', idea1);
+            console.log('Idea 2:', idea2);
+            
+            // Add to connections array for visual representation only
+            this.connections.push({ 
+                from: idea1, 
+                to: idea2, 
+                source: idea1, 
+                target: idea2,
+                pending: true // Mark as pending database save
+            });
+            this.drawConnections();
+            
+            // Schedule a retry after a short delay
+            setTimeout(() => {
+                this.retryPendingConnections();
+            }, 1000);
+            
+            return;
+        }
+        
+        // Both ideas have IDs, so we can save the connection
+        this.saveConnectionToDatabase(idea1.id, idea2.id).then(connection => {
+            if (connection) {
+                // Add to connections array with the database ID
+                this.connections.push({
+                    from: idea1,
+                    to: idea2,
+                    source: idea1,
+                    target: idea2,
+                    id: connection.id
+                });
+                this.drawConnections();
+            }
+        });
     }
 
     clearWorkspace() {
+        // Remove all idea elements from the DOM
         this.ideas.forEach(idea => {
-            idea.element.remove();
+            if (idea.element && idea.element.parentNode) {
+                idea.element.parentNode.removeChild(idea.element);
+            }
         });
+        
+        // Clear the arrays
         this.ideas = [];
         this.connections = [];
+        
+        // Clear any tooltips or other UI elements
+        if (this.activeTooltip) {
+            this.activeTooltip.remove();
+            this.activeTooltip = null;
+        }
+        
+        // Clear any merge state
+        this.mergeIdeas = [];
+        this.selectedIdeas = [];
+        this.isSelectMode = false;
+        
+        // Note: We don't clear idea history when clearing workspace
+        // because history is now project-specific and persistent
+        
+        // Redraw the (now empty) connections
         this.drawConnections();
+        
+        console.log('Workspace cleared');
     }
 
-    addToHistory(text) {
-        // Check if ideas list exists before trying to use it
-        if (!this.ideasList) return;
+    addToHistory(text, projectId = null) {
+        // Use current project ID if none provided
+        const targetProjectId = projectId || this.currentProjectId || (window.projectManager ? window.projectManager.getCurrentProjectId() : null);
+        
+        if (!targetProjectId) {
+            console.warn('Cannot add to history: No project selected');
+            return;
+        }
+        
+        // Initialize history array for this project if it doesn't exist
+        if (!this.ideaHistoryByProject.has(targetProjectId)) {
+            this.ideaHistoryByProject.set(targetProjectId, []);
+        }
+        
+        // Get project history
+        const projectHistory = this.ideaHistoryByProject.get(targetProjectId);
+        
+        // Add idea to project history
+        if (text && text.trim() !== '') {
+            // Skip if already in history
+            if (projectHistory.includes(text)) {
+                return;
+            }
+            
+            // Add to beginning of history
+            projectHistory.unshift(text);
+            
+            // Limit history size
+            if (projectHistory.length > this.maxHistoryItems) {
+                projectHistory.pop();
+            }
+            
+            // Update UI if this is the current project
+            if (targetProjectId === this.currentProjectId) {
+                this.updateHistoryPanel();
+            }
+        }
+    }
 
-        const li = document.createElement('li');
-        li.textContent = text;
-        this.ideasList.insertBefore(li, this.ideasList.firstChild);
+    // New method to update the history panel based on current project
+    updateHistoryPanel() {
+        if (!this.ideasList) return;
+        
+        // Clear the current list
+        this.ideasList.innerHTML = '';
+        
+        // Get current project history
+        const currentProjectHistory = this.ideaHistoryByProject.get(this.currentProjectId) || [];
+        
+        // Add each idea to the history panel
+        currentProjectHistory.forEach(idea => {
+            const li = document.createElement('li');
+            li.textContent = idea.length > 70 ? idea.substring(0, 70) + '...' : idea;
+            li.dataset.fullText = idea;
+            li.addEventListener('click', () => {
+                const rect = this.workspace.getBoundingClientRect();
+                const x = rect.width / 2;
+                const y = rect.height / 2;
+                this.addIdea(x, y, idea);
+            });
+            this.ideasList.appendChild(li);
+        });
     }
 
     showTooltip(ideaBall, text) {
@@ -617,13 +952,20 @@ class IdeaManager {
 
     setupHistoryToggle() {
         const toggleBtn = document.getElementById('toggleHistory');
-        const historyContent = document.querySelector('.ideas-history');
+        const historyContent = document.getElementById('historyContent');
+        
+        if (!toggleBtn || !historyContent) return;
         
         toggleBtn.addEventListener('click', () => {
-            const isVisible = !historyContent.classList.contains('hidden');
             historyContent.classList.toggle('hidden');
-            toggleBtn.textContent = isVisible ? 'Show History' : 'Hide History';
+            toggleBtn.textContent = historyContent.classList.contains('hidden') ? 'Show History' : 'Hide History';
         });
+        
+        // Initial history update for current project
+        this.currentProjectId = window.projectManager ? window.projectManager.getCurrentProjectId() : null;
+        if (this.currentProjectId) {
+            this.updateHistoryPanel();
+        }
     }
 
     setupRatingSystem() {
@@ -793,5 +1135,150 @@ class IdeaManager {
             // Add to history with rating
             this.addToHistory(text);
         }
+    }
+
+    async updateIdeaPosition(idea, x, y) {
+        // Get the current project ID
+        const projectId = window.projectManager ? window.projectManager.getCurrentProjectId() : null;
+        
+        if (!projectId || !idea.id) {
+            console.warn('Cannot update idea position: No project selected or idea has no ID');
+            return null;
+        }
+        
+        try {
+            const response = await fetch('/update-idea-position', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    id: idea.id,
+                    project_id: projectId,
+                    x_position: x,
+                    y_position: y
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                console.error('Failed to update idea position:', data.error);
+            }
+        } catch (error) {
+            console.error('Error updating idea position:', error);
+        }
+    }
+
+    async loadConnectionsFromDatabase(loadedIdeasById) {
+        const projectId = window.projectManager ? window.projectManager.getCurrentProjectId() : null;
+        
+        if (!projectId) {
+            console.warn('Cannot load connections: No project selected');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/get-connections?project_id=${projectId}`);
+            const data = await response.json();
+            
+            console.log('Loaded connections data:', data); // Debug log
+            
+            if (data.success) {
+                // Reset connections
+                this.connections = [];
+                
+                // Process each connection
+                data.connections.forEach(connection => {
+                    const sourceId = connection.source_id;
+                    const targetId = connection.target_id;
+                    
+                    // Look up the ideas by their IDs
+                    const sourceIdea = loadedIdeasById.get(sourceId);
+                    const targetIdea = loadedIdeasById.get(targetId);
+                    
+                    if (sourceIdea && targetIdea) {
+                        console.log(`Creating connection between ideas ${sourceId} and ${targetId}`); // Debug log
+                        
+                        // Add to connections array using both naming formats for compatibility
+                        this.connections.push({
+                            from: sourceIdea,
+                            to: targetIdea,
+                            source: sourceIdea,
+                            target: targetIdea,
+                            id: connection.id
+                        });
+                    } else {
+                        console.warn(`Cannot create connection: Source or target idea not found. Source ID: ${sourceId}, Target ID: ${targetId}`);
+                    }
+                });
+                
+                // Redraw all connections
+                this.drawConnections();
+            } else {
+                console.error('Failed to load connections:', data.error);
+            }
+        } catch (error) {
+            console.error('Error loading connections:', error);
+        }
+    }
+
+    async saveConnectionToDatabase(sourceId, targetId) {
+        const projectId = window.projectManager ? window.projectManager.getCurrentProjectId() : null;
+        
+        if (!projectId) {
+            console.warn('Cannot save connection: No project selected');
+            return null;
+        }
+        
+        console.log(`Saving connection from idea ${sourceId} to idea ${targetId}`); // Debug log
+        
+        try {
+            const response = await fetch('/save-connection', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    source_id: sourceId,
+                    target_id: targetId,
+                    project_id: projectId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                console.log('Connection saved successfully:', data.connection); // Debug log
+                return data.connection;
+            } else {
+                console.error('Failed to save connection:', data.error);
+                return null;
+            }
+        } catch (error) {
+            console.error('Error saving connection:', error);
+            return null;
+        }
+    }
+
+    // Add a method to retry saving pending connections
+    retryPendingConnections() {
+        const pendingConnections = this.connections.filter(conn => conn.pending);
+        
+        pendingConnections.forEach((conn, index) => {
+            const idea1 = conn.from || conn.source;
+            const idea2 = conn.to || conn.target;
+            
+            if (idea1.id && idea2.id) {
+                // Now both ideas have IDs, so we can save the connection
+                this.saveConnectionToDatabase(idea1.id, idea2.id).then(connection => {
+                    if (connection) {
+                        // Update the pending connection with the database ID
+                        conn.id = connection.id;
+                        conn.pending = false;
+                    }
+                });
+            }
+        });
     }
 }
